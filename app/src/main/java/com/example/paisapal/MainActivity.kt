@@ -15,7 +15,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import com.example.paisapal.ui.screens.home.HomeScreen
+import androidx.navigation.compose.rememberNavController
+import com.example.paisapal.ui.navigation.PaisaPalNavGraph
 import com.example.paisapal.ui.theme.PaisaPalTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -43,7 +44,8 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     if (hasPermissions) {
-                        HomeScreen()
+                        val navController = rememberNavController()
+                        PaisaPalNavGraph(navController)
                     } else {
                         PermissionScreen(
                             onRequestPermission = { requestPermissions() }

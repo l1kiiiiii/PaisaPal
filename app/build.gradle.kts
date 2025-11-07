@@ -8,12 +8,12 @@ plugins {
 
 android {
     namespace = "com.example.paisapal"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.paisapal"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
@@ -45,10 +45,6 @@ android {
         compose = true
     }
 
-    // REMOVE THIS SECTION (composeOptions)
-    // composeOptions {
-    //     kotlinCompilerExtensionVersion = "1.5.14"
-    // }
 
     packaging {
         resources {
@@ -67,12 +63,13 @@ dependencies {
     implementation(libs.androidx.activity.compose)
 
     // Compose
-    implementation(platform("androidx.compose:compose-bom:2024.06.00"))
+    implementation(platform(libs.androidx.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material3)
     implementation(libs.compose.navigation)
+    implementation(libs.compose.material.icons.extended)
     debugImplementation(libs.compose.ui.tooling)
 
     // Hilt

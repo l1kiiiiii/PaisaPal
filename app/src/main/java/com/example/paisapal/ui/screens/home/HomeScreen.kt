@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -22,10 +24,12 @@ import com.example.paisapal.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    viewModel: HomeViewModel = hiltViewModel()
+    viewModel: HomeViewModel = hiltViewModel(),
+    onImportClick: () -> Unit = {}
 ) {
     val transactions by viewModel.transactions.collectAsState()
 
@@ -38,16 +42,43 @@ fun HomeScreen(
                         fontWeight = FontWeight.Bold
                     )
                 },
+                actions = {
+                    // Import button
+                    IconButton(onClick = onImportClick) {
+                        Icon(
+                            imageVector = Icons.Default.Download,
+                            contentDescription = "Import SMS",
+                            tint = Color.White
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White
+                    titleContentColor = Color.White,
+                    actionIconContentColor = Color.White
                 )
             )
+        },
+        floatingActionButton = {
+            if (transactions.isNotEmpty()) {
+                FloatingActionButton(
+                    onClick = onImportClick,
+                    containerColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Download,
+                        contentDescription = "Import More SMS"
+                    )
+                }
+            }
         }
     ) { paddingValues ->
 
         if (transactions.isEmpty()) {
-            EmptyState(modifier = Modifier.padding(paddingValues))
+            EmptyStateWithImport(
+                modifier = Modifier.padding(paddingValues),
+                onImportClick = onImportClick
+            )
         } else {
             TransactionList(
                 transactions = transactions,
@@ -58,31 +89,69 @@ fun HomeScreen(
 }
 
 @Composable
-private fun EmptyState(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+private fun EmptyStateWithImport(
+    modifier: Modifier = Modifier,
+    onImportClick: () -> Unit = {}
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        Text(
+            text = "📱",
+            fontSize = 64.sp
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "No Transactions Yet",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "Get started by importing your existing bank SMS or wait for new transactions.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Gray,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Button(
+            onClick = onImportClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
         ) {
-            Text(
-                text = "📱",
-                fontSize = 64.sp
+            Icon(
+                imageVector = Icons.Default.Download,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = Color.White
             )
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "No Transactions Yet",
-                style = MaterialTheme.typography.titleLarge,
-                color = Color.Gray
-            )
-            Text(
-                text = "Waiting for bank SMS...",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.Gray,
-                textAlign = TextAlign.Center
+                "Import SMS",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
             )
         }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = "💡 New transactions will appear automatically when you receive bank SMS",
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.Gray,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
@@ -99,12 +168,19 @@ private fun TransactionList(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            Text(
-                text = "Recent Transactions",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Recent Transactions (${transactions.size})",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
 
         items(transactions) { transaction ->

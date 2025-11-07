@@ -1,10 +1,10 @@
 package com.example.data.di
 
-
 import android.content.Context
 import androidx.room.Room
-import com.example.data.local.AppDatabase
 import com.example.data.local.SavedPlaceDao
+import com.example.data.local.AppDatabase
+import com.example.data.local.SmsContentProvider
 import com.example.data.local.TransactionDao
 import com.example.data.repository.SavedPlaceRepositoryImpl
 import com.example.data.repository.TransactionRepositoryImpl
@@ -51,5 +51,11 @@ object DataModule {
     @Singleton
     fun provideSavedPlaceRepository(dao: SavedPlaceDao): SavedPlaceRepository {
         return SavedPlaceRepositoryImpl(dao)
+    }
+
+    @Provides
+    @Singleton
+    fun provideSmsContentProvider(@ApplicationContext context: Context): SmsContentProvider {
+        return SmsContentProvider(context)
     }
 }
