@@ -15,8 +15,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.navigation.compose.rememberNavController
-import com.example.paisapal.ui.navigation.PaisaPalNavGraph
 import com.example.paisapal.ui.theme.PaisaPalTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -44,8 +42,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     if (hasPermissions) {
-                        val navController = rememberNavController()
-                        PaisaPalNavGraph(navController)
+                        MainScreen() // ✅ Now includes bottom nav!
                     } else {
                         PermissionScreen(
                             onRequestPermission = { requestPermissions() }

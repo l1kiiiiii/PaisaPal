@@ -1,12 +1,33 @@
 package com.example.paisapal.ui.screens.home
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -20,16 +41,22 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.domain.model.Transaction
 import com.example.domain.model.TransactionType
-import com.example.paisapal.ui.theme.*
-import java.text.SimpleDateFormat
-import java.util.*
-
+import com.example.paisapal.ui.theme.BackgroundDark
+import com.example.paisapal.ui.theme.CreditGreen
+import com.example.paisapal.ui.theme.DebitRed
+import com.example.paisapal.ui.theme.PrimaryGreen
+import com.example.paisapal.ui.theme.PrimaryGreenLight
+import com.example.paisapal.ui.theme.SurfaceDark
+import com.example.paisapal.ui.theme.SurfaceLighter
+import com.example.paisapal.ui.theme.TextGray
+import com.example.paisapal.ui.theme.TextWhite
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
-    onImportClick: () -> Unit = {}
+    onImportClick: () -> Unit = {},
+    onTransactionClick: (Transaction) -> Unit = {}
 ) {
     val transactions by viewModel.transactions.collectAsState()
 
@@ -39,38 +66,25 @@ fun HomeScreen(
                 title = {
                     Text(
                         text = "PaisaPal",
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 24.sp
                     )
                 },
                 actions = {
-                    // Import button
                     IconButton(onClick = onImportClick) {
                         Icon(
                             imageVector = Icons.Default.Download,
                             contentDescription = "Import SMS",
-                            tint = Color.White
+                            tint = TextWhite
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White,
-                    actionIconContentColor = Color.White
+                    containerColor = PrimaryGreen,
+                    titleContentColor = TextWhite,
+                    actionIconContentColor = TextWhite
                 )
             )
-        },
-        floatingActionButton = {
-            if (transactions.isNotEmpty()) {
-                FloatingActionButton(
-                    onClick = onImportClick,
-                    containerColor = MaterialTheme.colorScheme.primary
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Download,
-                        contentDescription = "Import More SMS"
-                    )
-                }
-            }
         }
     ) { paddingValues ->
 
@@ -80,9 +94,171 @@ fun HomeScreen(
                 onImportClick = onImportClick
             )
         } else {
-            TransactionList(
+            HomeContent(
                 transactions = transactions,
-                modifier = Modifier.padding(paddingValues)
+                modifier = Modifier.padding(paddingValues),
+                onTransactionClick = onTransactionClick
+            )
+        }
+    }
+}
+
+@Composable
+private fun HomeContent(
+    transactions: List<Transaction>,
+    modifier: Modifier = Modifier,
+    onTransactionClick: (Transaction) -> Unit = {}
+) {
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .background(BackgroundDark),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        // Summary Section
+        item {
+            SummaryCards(transactions)
+        }
+
+        // Recent Transactions Header
+        item {
+            Text(
+                text = "Recent Transactions",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = TextWhite,
+                fontSize = 20.sp
+            )
+        }
+
+        // Transaction List
+        items(transactions.take(10)) { transaction ->
+            TransactionListItem(
+                transaction = transaction,
+                onClick = { onTransactionClick(transaction) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun SummaryCards(transactions: List<Transaction>) {
+    val income = transactions
+        .filter { it.type == TransactionType.CREDIT }
+        .sumOf { it.amount }
+
+    val expenses = transactions
+        .filter { it.type == TransactionType.DEBIT }
+        .sumOf { it.amount }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        SummaryCard(
+            title = "Income",
+            amount = String.format("$%.2f", income),
+            backgroundColor = SurfaceLighter,
+            modifier = Modifier.weight(1f)
+        )
+
+        SummaryCard(
+            title = "Expenses",
+            amount = String.format("$%.2f", expenses),
+            backgroundColor = SurfaceLighter,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun SummaryCard(
+    title: String,
+    amount: String,
+    backgroundColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .height(130.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = backgroundColor)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextGray,
+                fontSize = 14.sp
+            )
+
+            Text(
+                text = amount,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = TextWhite,
+                fontSize = 28.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun TransactionListItem(
+    transaction: Transaction,
+    onClick: () -> Unit = {}
+) {
+    val isCredit = transaction.type == TransactionType.CREDIT
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceDark)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = transaction.merchantDisplayName ?: "Unknown",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextWhite
+                )
+
+                transaction.category?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextGray,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+
+            Text(
+                text = "${if (isCredit) "+" else "-"}${String.format("%.2f", transaction.amount)}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (isCredit) CreditGreen else DebitRed,
+                fontSize = 16.sp
             )
         }
     }
@@ -105,20 +281,22 @@ private fun EmptyStateWithImport(
             fontSize = 64.sp
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         Text(
             text = "No Transactions Yet",
             style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = TextWhite,
+            fontSize = 24.sp
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = "Get started by importing your existing bank SMS or wait for new transactions.",
+            text = "Get started by importing your existing bank SMS",
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.Gray,
+            color = TextGray,
             textAlign = TextAlign.Center
         )
 
@@ -128,163 +306,14 @@ private fun EmptyStateWithImport(
             onClick = onImportClick,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
+                .height(56.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreenLight)
         ) {
-            Icon(
-                imageVector = Icons.Default.Download,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = Color.White
-            )
-            Spacer(modifier = Modifier.width(8.dp))
             Text(
                 "Import SMS",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
         }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            text = "💡 New transactions will appear automatically when you receive bank SMS",
-            style = MaterialTheme.typography.bodySmall,
-            color = Color.Gray,
-            textAlign = TextAlign.Center
-        )
     }
-}
-
-@Composable
-private fun TransactionList(
-    transactions: List<Transaction>,
-    modifier: Modifier = Modifier
-) {
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        contentPadding = PaddingValues(vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Recent Transactions (${transactions.size})",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-
-        items(transactions) { transaction ->
-            TransactionCard(transaction = transaction)
-        }
-    }
-}
-
-@Composable
-private fun TransactionCard(transaction: Transaction) {
-    val isCredit = transaction.type == TransactionType.CREDIT
-
-    val backgroundColor = if (isCredit) CreditGreenLight else DebitRedLight
-    val amountColor = if (isCredit) CreditGreenDark else DebitRedDark
-    val amountPrefix = if (isCredit) "+ ₹" else "- ₹"
-    val typeText = if (isCredit) "CREDIT" else "DEBIT"
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = backgroundColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            // Header: Type Badge and Amount
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = amountColor.copy(alpha = 0.15f)
-                ) {
-                    Text(
-                        text = typeText,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = amountColor,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
-
-                Text(
-                    text = "$amountPrefix${String.format("%.2f", transaction.amount)}",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = amountColor,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Timestamp
-            Text(
-                text = formatTimestamp(transaction.timestamp),
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Sender
-            Text(
-                text = "From: ${transaction.sender}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.DarkGray,
-                fontWeight = FontWeight.Medium
-            )
-
-            // Reference Number (if available)
-            transaction.referenceNumber?.let { ref ->
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Ref: $ref",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
-                )
-            }
-
-            // SMS Body (truncated)
-            Spacer(modifier = Modifier.height(8.dp))
-            Surface(
-                shape = RoundedCornerShape(6.dp),
-                color = Color.White.copy(alpha = 0.5f)
-            ) {
-                Text(
-                    text = transaction.smsBody.take(120) +
-                            if (transaction.smsBody.length > 120) "..." else "",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.DarkGray,
-                    lineHeight = 18.sp,
-                    modifier = Modifier.padding(8.dp)
-                )
-            }
-        }
-    }
-}
-
-private fun formatTimestamp(timestamp: Long): String {
-    val dateFormat = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
-    return dateFormat.format(Date(timestamp))
 }
