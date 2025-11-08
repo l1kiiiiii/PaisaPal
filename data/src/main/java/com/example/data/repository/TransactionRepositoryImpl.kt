@@ -44,4 +44,18 @@ class TransactionRepositoryImpl @Inject constructor(
     override suspend fun findByReferenceNumber(refNo: String): Transaction? {
         return dao.findByReferenceNumber(refNo)?.toDomain()
     }
+    override suspend fun getTransactionById(id: String): Transaction? {
+        return dao.getTransactionById(id)?.toDomain()
+    }
+    override suspend fun findByAmountAndTimeRange(
+        amount: Double,
+        startTime: Long,
+        endTime: Long
+    ): List<Transaction> {
+        return dao.findByAmountAndTimeRange(amount, startTime, endTime).map { it.toDomain() }
+    }
+
+    override suspend fun getAllTransactionsWithReferenceNumber(): List<Transaction> {
+        return dao.getAllTransactionsWithReferenceNumber().map { it.toDomain() }
+    }
 }

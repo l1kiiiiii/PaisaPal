@@ -9,15 +9,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.domain.model.Transaction
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.paisapal.ui.screens.detail.TransactionDetailViewModel
 import com.example.paisapal.ui.theme.*
 
 data class CategoryItem(
@@ -29,118 +29,105 @@ data class CategoryItem(
 val CATEGORIES = listOf(
     CategoryItem("Shopping", Icons.Filled.ShoppingCart, CategoryBgShopping),
     CategoryItem("Transportation", Icons.Filled.DirectionsCar, CategoryBgTransport),
-    CategoryItem("Housing", Icons.Filled.Home, Color(0xFF8BC34A).copy(alpha = 0.2f)),
+    CategoryItem("Housing", Icons.Filled.Home, androidx.compose.ui.graphics.Color(0xFF8BC34A).copy(alpha = 0.2f)),
     CategoryItem("Food & Dining", Icons.Filled.Restaurant, CategoryBgFood),
     CategoryItem("Income", Icons.Filled.AttachMoney, CategoryBgEducation),
-    CategoryItem("Gifts", Icons.Filled.CardGiftcard, Color(0xFFE91E63).copy(alpha = 0.2f)),
+    CategoryItem("Gifts", Icons.Filled.CardGiftcard, androidx.compose.ui.graphics.Color(0xFFE91E63).copy(alpha = 0.2f)),
     CategoryItem("Entertainment", Icons.Filled.MovieCreation, CategoryBgEntertainment),
     CategoryItem("Health & Fitness", Icons.Filled.FavoriteBorder, CategoryBgHealth),
     CategoryItem("Work", Icons.Filled.Work, CategoryBgWork),
     CategoryItem("Education", Icons.Filled.School, CategoryBgEducation),
-    CategoryItem("Travel", Icons.Filled.Flight, Color(0xFF00BCD4).copy(alpha = 0.2f)),
+    CategoryItem("Travel", Icons.Filled.Flight, androidx.compose.ui.graphics.Color(0xFF00BCD4).copy(alpha = 0.2f)),
     CategoryItem("Other", Icons.Filled.MoreHoriz, DisabledColor.copy(alpha = 0.2f))
 )
 
 @Composable
 fun CategorizeScreen(
-    transaction: Transaction,
-    onCategorySelected: (String) -> Unit = {},
-    onBackClick: () -> Unit = {}
+    transactionId: String,
+    onBackClick: () -> Unit = {},
+    onCategorySelected: () -> Unit = {},
+    viewModel: TransactionDetailViewModel = hiltViewModel()
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(BackgroundDark)
-            .padding(20.dp)
-    ) {
-        // Header
-        Row(
+    // Load transaction
+    LaunchedEffect(transactionId) {
+        viewModel.loadTransaction(transactionId)
+    }
+
+    val transaction by viewModel.transaction.collectAsState()
+
+    if (transaction == null) {
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                .fillMaxSize()
+                .background(BackgroundDark),
+            contentAlignment = Alignment.Center
         ) {
-            IconButton(onClick = onBackClick) {
-                Icon(
-                    Icons.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = TextWhite
-                )
-            }
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "Uncategorized",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextWhite
-                )
-
-                Text(
-                    "Rs. ${String.format("%.2f", transaction.amount)}",
-                    fontSize = 14.sp,
-                    color = TextGray
-                )
-            }
+            CircularProgressIndicator(color = PrimaryGreenLight)
         }
+    } else {
+        val txn = transaction!!
 
-        // Amount Display
-        Card(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = SurfaceDark)
+                .fillMaxSize()
+                .background(BackgroundDark)
+                .padding(20.dp)
         ) {
+            // Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(bottom = 24.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = SurfaceLighter,
-                    modifier = Modifier.size(48.dp)
-                ) {
+                IconButton(onClick = onBackClick) {
                     Icon(
-                        Icons.Filled.AttachMoney,
-                        contentDescription = null,
-                        tint = PrimaryGreenLight,
-                        modifier = Modifier
-                            .align(Alignment.Center as Alignment.Vertical)
-                            .size(24.dp)
+                        Icons.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = TextWhite
                     )
                 }
 
-                Column {
-                    Text("Rs. ${String.format("%.2f", transaction.amount)}", fontWeight = FontWeight.Bold, color = TextWhite)
-                    Text(transaction.merchantDisplayName ?: "Unknown", fontSize = 12.sp, color = TextGray)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Uncategorized",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextWhite
+                    )
+
+                    Text(
+                        "Rs. ${String.format("%.2f", txn.amount)}",
+                        fontSize = 14.sp,
+                        color = TextGray
+                    )
                 }
             }
-        }
 
-        // Category Selection
-        Text(
-            "Select a category",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = TextWhite,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
+            // Category Selection
+            Text(
+                "Select a category",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextWhite,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
 
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(CATEGORIES) { category ->
-                CategoryButton(
-                    category = category,
-                    onClick = { onCategorySelected(category.name) }
-                )
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(CATEGORIES) { category ->
+                    CategoryButton(
+                        category = category,
+                        onClick = {
+                            // Update category and go back
+                            onCategorySelected()
+                        }
+                    )
+                }
             }
         }
     }

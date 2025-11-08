@@ -2,8 +2,10 @@ package com.example.paisapal.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.example.paisapal.ui.screens.categorize.CategorizeScreen
 import com.example.paisapal.ui.screens.detail.TransactionDetailScreen
 import com.example.paisapal.ui.screens.home.HomeScreen
@@ -18,10 +20,13 @@ fun PaisaPalNavGraph(
     onCurrentRouteChange: (String) -> Unit = {}
 ) {
     NavHost(navController = navController, startDestination = "home") {
+        // Main Tab Screens
         composable("home") {
             HomeScreen(
                 onImportClick = { navController.navigate("import_sms") },
-                onTransactionClick = { /* Show details */ }
+                onTransactionClick = { transaction ->
+                    navController.navigate("detail/${transaction.id}")
+                }
             )
             onCurrentRouteChange("home")
         }
@@ -45,25 +50,40 @@ fun PaisaPalNavGraph(
             onCurrentRouteChange("settings")
         }
 
-        // Nested Screens (no bottom nav)
+        // Nested Screens (No Bottom Nav)
         composable("import_sms") {
             ImportSmsScreen(onBackClick = { navController.popBackStack() })
             onCurrentRouteChange("import_sms")
         }
 
-        composable("detail/{transactionId}") {
-            TransactionDetailScreen(
-                transaction = null!!, // Get from ViewModel
-                onBackClick = { navController.popBackStack() }
-            )
+        // FIXED: Pass ID, fetch in ViewModel
+        composable(
+            route = "detail/{transactionId}",
+            arguments = listOf(navArgument("transactionId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val transactionId = backStackEntry.arguments?.getString("transactionId")
+            if (transactionId != null) {
+                TransactionDetailScreen(
+                    transactionId = transactionId,
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
             onCurrentRouteChange("detail")
         }
 
-        composable("categorize/{transactionId}") {
-            CategorizeScreen(
-                transaction = null!!, // Get from ViewModel
-                onCategorySelected = { navController.popBackStack() }
-            )
+        // FIXED: Pass ID, fetch in ViewModel
+        composable(
+            route = "categorize/{transactionId}",
+            arguments = listOf(navArgument("transactionId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val transactionId = backStackEntry.arguments?.getString("transactionId")
+            if (transactionId != null) {
+                CategorizeScreen(
+                    transactionId = transactionId,
+                    onBackClick = { navController.popBackStack() },
+                    onCategorySelected = { navController.popBackStack() }
+                )
+            }
             onCurrentRouteChange("categorize")
         }
     }

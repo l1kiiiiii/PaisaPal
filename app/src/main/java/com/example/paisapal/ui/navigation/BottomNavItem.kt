@@ -1,6 +1,7 @@
 package com.example.paisapal.ui.navigation
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.TrendingUp
@@ -12,11 +13,13 @@ sealed class BottomNavItem(val route: String, val label: String, val icon: Image
     object Review : BottomNavItem("review", "Review", Icons.Default.Search)
     object Insights : BottomNavItem("insights", "Insights", Icons.Default.TrendingUp)
     object Settings : BottomNavItem("settings", "Settings", Icons.Default.Settings)
+    object Budget : BottomNavItem("budget", "Budget", Icons.Default.AccountBalanceWallet)
 }
 
 val bottomNavItems = listOf(
     BottomNavItem.Home,
     BottomNavItem.Review,
+    BottomNavItem.Budget,
     BottomNavItem.Insights,
     BottomNavItem.Settings
 )

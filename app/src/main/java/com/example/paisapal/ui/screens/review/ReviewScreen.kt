@@ -51,7 +51,7 @@ fun ReviewScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        "✅",
+                        "   1 ✅",
                         fontSize = 64.sp
                     )
                     Spacer(modifier = Modifier.height(16.dp))

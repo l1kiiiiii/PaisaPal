@@ -2,13 +2,10 @@ package com.example.data.di
 
 import android.content.Context
 import androidx.room.Room
-import com.example.data.local.SavedPlaceDao
-import com.example.data.local.AppDatabase
-import com.example.data.local.SmsContentProvider
-import com.example.data.local.TransactionDao
-import com.example.data.repository.SavedPlaceRepositoryImpl
+import com.example.data.local.*
+import com.example.data.repository.BudgetRepositoryImpl
 import com.example.data.repository.TransactionRepositoryImpl
-import com.example.domain.repository.SavedPlaceRepository
+import com.example.domain.repository.BudgetRepository
 import com.example.domain.repository.TransactionRepository
 import dagger.Module
 import dagger.Provides
@@ -28,34 +25,57 @@ object DataModule {
             context,
             AppDatabase::class.java,
             "paisapal_database"
-        ).build()
+        )
+            .fallbackToDestructiveMigration()
+            .build()
     }
 
     @Provides
+    @Singleton
     fun provideTransactionDao(database: AppDatabase): TransactionDao {
         return database.transactionDao()
     }
 
     @Provides
+    @Singleton
     fun provideSavedPlaceDao(database: AppDatabase): SavedPlaceDao {
         return database.savedPlaceDao()
     }
 
     @Provides
     @Singleton
-    fun provideTransactionRepository(dao: TransactionDao): TransactionRepository {
-        return TransactionRepositoryImpl(dao)
+    fun provideMerchantMappingDao(database: AppDatabase): MerchantMappingDao {
+        return database.merchantMappingDao()
     }
 
     @Provides
     @Singleton
-    fun provideSavedPlaceRepository(dao: SavedPlaceDao): SavedPlaceRepository {
-        return SavedPlaceRepositoryImpl(dao)
+    fun provideBudgetDao(database: AppDatabase): BudgetDao {
+        return database.budgetDao()
     }
 
     @Provides
     @Singleton
-    fun provideSmsContentProvider(@ApplicationContext context: Context): SmsContentProvider {
+    fun provideTransactionRepository(
+        transactionDao: TransactionDao
+    ): TransactionRepository {
+        return TransactionRepositoryImpl(transactionDao)
+    }
+
+    @Provides
+    @Singleton
+    fun provideBudgetRepository(
+        budgetDao: BudgetDao
+    ): BudgetRepository {
+        return BudgetRepositoryImpl(budgetDao)
+    }
+
+
+    @Provides
+    @Singleton
+    fun provideSmsContentProvider(
+        @ApplicationContext context: Context
+    ): SmsContentProvider {
         return SmsContentProvider(context)
     }
 }

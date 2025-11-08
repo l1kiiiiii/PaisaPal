@@ -16,6 +16,23 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE referenceNumber = :refNo LIMIT 1")
     suspend fun findByReferenceNumber(refNo: String): TransactionEntity?
 
+    @Query("SELECT * FROM transactions WHERE id = :id LIMIT 1")
+    suspend fun getTransactionById(id: String): TransactionEntity?
+
+    @Query("""
+        SELECT * FROM transactions 
+        WHERE amount = :amount 
+        AND timestamp BETWEEN :startTime AND :endTime
+    """)
+    suspend fun findByAmountAndTimeRange(
+        amount: Double,
+        startTime: Long,
+        endTime: Long
+    ): List<TransactionEntity>
+
+    @Query("SELECT * FROM transactions WHERE referenceNumber IS NOT NULL")
+    suspend fun getAllTransactionsWithReferenceNumber(): List<TransactionEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(transaction: TransactionEntity)
 
@@ -28,3 +45,4 @@ interface TransactionDao {
     @Delete
     suspend fun delete(transaction: TransactionEntity)
 }
+

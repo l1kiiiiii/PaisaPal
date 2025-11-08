@@ -11,4 +11,7 @@ interface TransactionRepository {
     suspend fun update(transaction: Transaction)
     suspend fun delete(transaction: Transaction)
     suspend fun findByReferenceNumber(refNo: String): Transaction?
+    suspend fun getTransactionById(id: String): Transaction?
+    suspend fun findByAmountAndTimeRange(amount: Double, startTime: Long, endTime: Long): List<Transaction>
+    suspend fun getAllTransactionsWithReferenceNumber(): List<Transaction>
 }
