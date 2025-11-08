@@ -6,6 +6,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.example.paisapal.ui.screens.budget.BudgetScreen
 import com.example.paisapal.ui.screens.categorize.CategorizeScreen
 import com.example.paisapal.ui.screens.detail.TransactionDetailScreen
 import com.example.paisapal.ui.screens.home.HomeScreen
@@ -40,6 +41,12 @@ fun PaisaPalNavGraph(
             onCurrentRouteChange("review")
         }
 
+        composable("budget") {
+            BudgetScreen()
+            onCurrentRouteChange("budget")
+        }
+
+
         composable("insights") {
             InsightsScreen()
             onCurrentRouteChange("insights")
@@ -56,7 +63,7 @@ fun PaisaPalNavGraph(
             onCurrentRouteChange("import_sms")
         }
 
-        // FIXED: Pass ID, fetch in ViewModel
+        //  Pass ID, fetch in ViewModel
         composable(
             route = "detail/{transactionId}",
             arguments = listOf(navArgument("transactionId") { type = NavType.StringType })
@@ -71,7 +78,7 @@ fun PaisaPalNavGraph(
             onCurrentRouteChange("detail")
         }
 
-        // FIXED: Pass ID, fetch in ViewModel
+        //  Pass ID, fetch in ViewModel
         composable(
             route = "categorize/{transactionId}",
             arguments = listOf(navArgument("transactionId") { type = NavType.StringType })

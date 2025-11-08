@@ -88,4 +88,10 @@ dependencies {
     implementation(libs.vico.compose.m3)
     implementation(libs.core)
 
+    // Instrumented Tests (Android tests)
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.espresso.core)
+    androidTestImplementation(libs.compose.ui.tooling)
+
 }
