@@ -42,7 +42,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     if (hasPermissions) {
-                        MainScreen() // ✅ Now includes bottom nav!
+                        MainScreen() //  Now includes bottom nav!
                     } else {
                         PermissionScreen(
                             onRequestPermission = { requestPermissions() }

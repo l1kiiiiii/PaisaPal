@@ -6,14 +6,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.domain.model.Transaction
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.domain.model.TransactionType
 import com.example.paisapal.ui.theme.*
 import java.text.SimpleDateFormat
@@ -22,11 +22,16 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionDetailScreen(
-    transaction: Transaction,
+    transactionId: String,
     onBackClick: () -> Unit = {},
-    onCategoryChange: (String) -> Unit = {}
+    viewModel: TransactionDetailViewModel = hiltViewModel()
 ) {
-    val isCredit = transaction.type == TransactionType.CREDIT
+    // Fetch transaction by ID from ViewModel
+    LaunchedEffect(transactionId) {
+        viewModel.loadTransaction(transactionId)
+    }
+
+    val transaction by viewModel.transaction.collectAsState()
 
     Scaffold(
         topBar = {
@@ -34,107 +39,111 @@ fun TransactionDetailScreen(
                 title = { Text("Transaction Details") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = TextWhite)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = PrimaryGreen
+                    containerColor = PrimaryGreen,
+                    titleContentColor = TextWhite
                 )
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(BackgroundDark)
-                .padding(paddingValues)
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            // Amount Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceDark)
+
+        if (transaction == null) {
+            // Loading state
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(BackgroundDark)
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                CircularProgressIndicator(color = PrimaryGreenLight)
+            }
+        } else {
+            val txn = transaction!!
+            val isCredit = txn.type == TransactionType.CREDIT
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(BackgroundDark)
+                    .padding(paddingValues)
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                // Amount Card
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = SurfaceDark)
                 ) {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = if (isCredit) Color(0xFF4CAF50).copy(alpha = 0.2f) else Color(0xFFE53935).copy(alpha = 0.2f)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Icon(
-                            imageVector = if (isCredit) Icons.Default.ArrowBack else Icons.Default.ArrowBack,
-                            contentDescription = null,
-                            tint = if (isCredit) CreditGreen else DebitRed,
-                            modifier = Modifier
-                                .size(60.dp)
-                                .padding(12.dp)
+                        Text(
+                            text = "${if (isCredit) "+" else "-"}Rs. ${String.format("%.2f", txn.amount)}",
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isCredit) CreditGreen else DebitRed
+                        )
+
+                        Text(
+                            text = txn.type.name,
+                            color = TextGray,
+                            fontSize = 14.sp
                         )
                     }
-
-                    Text(
-                        text = "${if (isCredit) "+" else "-"}Rs. ${String.format("%.2f", transaction.amount)}",
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isCredit) CreditGreen else DebitRed
-                    )
-
-                    Text(
-                        text = transaction.type.name,
-                        color = TextGray,
-                        fontSize = 14.sp
-                    )
                 }
-            }
 
-            // Details Section
-            Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    "Details",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = TextWhite
-                )
-
-                DetailRow("Merchant", transaction.merchantDisplayName ?: transaction.merchantRaw ?: "Unknown")
-                DetailRow("Date", formatDate(transaction.timestamp))
-                DetailRow("Time", formatTime(transaction.timestamp))
-                transaction.referenceNumber?.let {
-                    DetailRow("Reference No.", it)
-                }
-                transaction.upiVpa?.let {
-                    DetailRow("UPI ID", it)
-                }
-            }
-
-            // Category Section
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    "Category",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = TextWhite
-                )
-
-                Button(
-                    onClick = { },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = SurfaceLighter)
+                // Details Section
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Text(
-                        transaction.category ?: "Select Category",
+                        "Details",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
                         color = TextWhite
                     )
+
+                    DetailRow("Merchant", txn.merchantDisplayName ?: txn.merchantRaw ?: "Unknown")
+                    DetailRow("Date", formatDate(txn.timestamp))
+                    DetailRow("Time", formatTime(txn.timestamp))
+                    txn.referenceNumber?.let {
+                        DetailRow("Reference No.", it)
+                    }
+                    txn.upiVpa?.let {
+                        DetailRow("UPI ID", it)
+                    }
+                }
+
+                // Category Section
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        "Category",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = TextWhite
+                    )
+
+                    Button(
+                        onClick = { },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = SurfaceLighter)
+                    ) {
+                        Text(
+                            txn.category ?: "Select Category",
+                            color = TextWhite
+                        )
+                    }
                 }
             }
         }

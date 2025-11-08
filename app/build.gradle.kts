@@ -79,4 +79,13 @@ dependencies {
 
     // Lifecycle
     implementation(libs.lifecycle.viewmodel.compose)
+
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
+
+    implementation(libs.compose)
+    implementation(libs.vico.compose.m3)
+    implementation(libs.core)
+
 }

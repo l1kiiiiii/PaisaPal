@@ -1,125 +1,78 @@
 package com.example.data.local
 
 import android.content.Context
+import android.net.Uri
 import android.provider.Telephony
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
+@Singleton
+class SmsContentProvider @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
 
-class SmsContentProvider(private val context: Context) {
+    data class SmsMessage(
+        val address: String,
+        val body: String,
+        val date: Long
+    )
 
-    /**
-     * Reads all SMS from device storage
-     * Returns list of SMS with sender, body, and timestamp
-     */
-    fun readAllSms(): List<SmsData> {
-        val smsList = mutableListOf<SmsData>()
+    fun readAllSms(): List<SmsMessage> {
+        val smsList = mutableListOf<SmsMessage>()
+        val uri = Uri.parse("content://sms/inbox")
 
-        try {
-            val cursor = context.contentResolver.query(
-                Telephony.Sms.CONTENT_URI,
-                arrayOf(
-                    Telephony.Sms._ID,
-                    Telephony.Sms.ADDRESS,        // Sender
-                    Telephony.Sms.BODY,           // Message content
-                    Telephony.Sms.DATE,           // Timestamp
-                    Telephony.Sms.TYPE            // Type (1=received, 2=sent)
-                ),
-                "${Telephony.Sms.TYPE} = ?",
-                arrayOf("1"),                      // Only received SMS
-                "${Telephony.Sms.DATE} DESC"     // Newest first
-            )
+        val cursor = context.contentResolver.query(
+            uri,
+            arrayOf("address", "body", "date"),
+            null,
+            null,
+            "date DESC"
+        )
 
-            cursor?.use { c ->
-                while (c.moveToNext()) {
-                    val sender = c.getString(c.getColumnIndexOrThrow(Telephony.Sms.ADDRESS))
-                    val body = c.getString(c.getColumnIndexOrThrow(Telephony.Sms.BODY))
-                    val date = c.getLong(c.getColumnIndexOrThrow(Telephony.Sms.DATE))
+        cursor?.use {
+            val addressIndex = it.getColumnIndex("address")
+            val bodyIndex = it.getColumnIndex("body")
+            val dateIndex = it.getColumnIndex("date")
 
-                    smsList.add(SmsData(sender, body, date))
-                }
+            while (it.moveToNext()) {
+                val address = it.getString(addressIndex)
+                val body = it.getString(bodyIndex)
+                val date = it.getLong(dateIndex)
+
+                smsList.add(SmsMessage(address, body, date))
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
         }
 
         return smsList
     }
 
-    /**
-     * Read SMS from specific sender (e.g., only bank SMS)
-     */
-    fun readSmsByAddress(sender: String): List<SmsData> {
-        val smsList = mutableListOf<SmsData>()
+    fun readSmsSince(timestamp: Long): List<SmsMessage> {
+        val smsList = mutableListOf<SmsMessage>()
+        val uri = Uri.parse("content://sms/inbox")
 
-        try {
-            val cursor = context.contentResolver.query(
-                Telephony.Sms.CONTENT_URI,
-                arrayOf(
-                    Telephony.Sms._ID,
-                    Telephony.Sms.ADDRESS,
-                    Telephony.Sms.BODY,
-                    Telephony.Sms.DATE
-                ),
-                "${Telephony.Sms.ADDRESS} LIKE ? AND ${Telephony.Sms.TYPE} = ?",
-                arrayOf("%$sender%", "1"),
-                "${Telephony.Sms.DATE} DESC"
-            )
+        val cursor = context.contentResolver.query(
+            uri,
+            arrayOf("address", "body", "date"),
+            "date > ?",
+            arrayOf(timestamp.toString()),
+            "date DESC"
+        )
 
-            cursor?.use { c ->
-                while (c.moveToNext()) {
-                    val smsAddress = c.getString(c.getColumnIndexOrThrow(Telephony.Sms.ADDRESS))
-                    val body = c.getString(c.getColumnIndexOrThrow(Telephony.Sms.BODY))
-                    val date = c.getLong(c.getColumnIndexOrThrow(Telephony.Sms.DATE))
+        cursor?.use {
+            val addressIndex = it.getColumnIndex("address")
+            val bodyIndex = it.getColumnIndex("body")
+            val dateIndex = it.getColumnIndex("date")
 
-                    smsList.add(SmsData(smsAddress, body, date))
-                }
+            while (it.moveToNext()) {
+                val address = it.getString(addressIndex)
+                val body = it.getString(bodyIndex)
+                val date = it.getLong(dateIndex)
+
+                smsList.add(SmsMessage(address, body, date))
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-
-        return smsList
-    }
-
-    /**
-     * Read SMS from last N days
-     */
-    fun readSmsFromLastDays(days: Int): List<SmsData> {
-        val smsList = mutableListOf<SmsData>()
-        val cutoffTime = System.currentTimeMillis() - (days * 24 * 60 * 60 * 1000)
-
-        try {
-            val cursor = context.contentResolver.query(
-                Telephony.Sms.CONTENT_URI,
-                arrayOf(
-                    Telephony.Sms._ID,
-                    Telephony.Sms.ADDRESS,
-                    Telephony.Sms.BODY,
-                    Telephony.Sms.DATE
-                ),
-                "${Telephony.Sms.DATE} > ? AND ${Telephony.Sms.TYPE} = ?",
-                arrayOf(cutoffTime.toString(), "1"),
-                "${Telephony.Sms.DATE} DESC"
-            )
-
-            cursor?.use { c ->
-                while (c.moveToNext()) {
-                    val sender = c.getString(c.getColumnIndexOrThrow(Telephony.Sms.ADDRESS))
-                    val body = c.getString(c.getColumnIndexOrThrow(Telephony.Sms.BODY))
-                    val date = c.getLong(c.getColumnIndexOrThrow(Telephony.Sms.DATE))
-
-                    smsList.add(SmsData(sender, body, date))
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
         }
 
         return smsList
     }
 }
-
-data class SmsData(
-    val sender: String,
-    val body: String,
-    val timestamp: Long
-)

@@ -37,7 +37,8 @@ class ImportSmsViewModel @Inject constructor(
 
                 // Parse each SMS
                 allSms.forEach { sms ->
-                    val transaction = parser.parse(sms.body, sms.sender, sms.timestamp)
+                    // ✅ FIX: Use correct field names (address, body, date)
+                    val transaction = parser.parse(sms.body, sms.address, sms.date)
 
                     if (transaction != null) {
                         repository.insert(transaction)
@@ -66,17 +67,19 @@ class ImportSmsViewModel @Inject constructor(
             _importState.value = ImportState.Loading
 
             try {
-                // Read only bank SMS (from last 30 days)
-                val bankSms = smsProvider.readSmsFromLastDays(30)
-                Log.d(TAG, "Found ${bankSms.size} bank SMS from last 30 days")
+                // Read bank SMS from last 30 days
+                val thirtyDaysAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
+                val allSms = smsProvider.readSmsSince(thirtyDaysAgo)
+
+                Log.d(TAG, "Found ${allSms.size} SMS from last 30 days")
 
                 var successCount = 0
                 var failureCount = 0
 
-                bankSms.forEach { sms ->
+                allSms.forEach { sms ->
                     // Check if it's from a bank
-                    if (isBankSms(sms.sender)) {
-                        val transaction = parser.parse(sms.body, sms.sender, sms.timestamp)
+                    if (isBankSms(sms.address)) {
+                        val transaction = parser.parse(sms.body, sms.address, sms.date)
 
                         if (transaction != null) {
                             repository.insert(transaction)
@@ -90,7 +93,7 @@ class ImportSmsViewModel @Inject constructor(
                 _importState.value = ImportState.Success(
                     imported = successCount,
                     failed = failureCount,
-                    total = bankSms.size
+                    total = allSms.size
                 )
 
                 Log.d(TAG, "Bank SMS import complete: $successCount imported, $failureCount failed")
@@ -102,7 +105,10 @@ class ImportSmsViewModel @Inject constructor(
     }
 
     private fun isBankSms(sender: String): Boolean {
-        val bankKeywords = listOf("bank", "hdfc", "icici", "sbi", "axis", "paytm", "gpay", "phonepe")
+        val bankKeywords = listOf(
+            "bank", "hdfc", "icici", "sbi", "axis", "kotak", "indus",
+            "paytm", "gpay", "phonepe", "amazon", "googlepay"
+        )
         return bankKeywords.any { sender.contains(it, ignoreCase = true) }
     }
 
