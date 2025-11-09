@@ -29,6 +29,10 @@ class TransactionRepositoryImpl @Inject constructor(
         dao.insert(transaction.toEntity())
     }
 
+    override suspend fun insertTransaction(transaction: Transaction) {
+        dao.insertTransaction(transaction.toEntity())
+    }
+
     override suspend fun insertMultiple(transactions: List<Transaction>) {
         dao.insertMultiple(transactions.map { it.toEntity() })
     }
@@ -44,9 +48,7 @@ class TransactionRepositoryImpl @Inject constructor(
     override suspend fun findByReferenceNumber(refNo: String): Transaction? {
         return dao.findByReferenceNumber(refNo)?.toDomain()
     }
-    override suspend fun getTransactionById(id: String): Transaction? {
-        return dao.getTransactionById(id)?.toDomain()
-    }
+
     override suspend fun findByAmountAndTimeRange(
         amount: Double,
         startTime: Long,
@@ -57,5 +59,17 @@ class TransactionRepositoryImpl @Inject constructor(
 
     override suspend fun getAllTransactionsWithReferenceNumber(): List<Transaction> {
         return dao.getAllTransactionsWithReferenceNumber().map { it.toDomain() }
+    }
+
+    override suspend fun transactionExists(transactionId: String): Boolean {
+        return dao.getTransactionById(transactionId) != null
+    }
+
+    override suspend fun updateTransactionCategory(transactionId: String, category: String) {
+        dao.updateCategory(transactionId, category)
+    }
+
+    override suspend fun getTransactionById(transactionId: String): Transaction? {
+        return dao.getTransactionById(transactionId)?.toDomain()
     }
 }

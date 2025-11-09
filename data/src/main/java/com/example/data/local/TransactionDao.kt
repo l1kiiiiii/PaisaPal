@@ -7,17 +7,12 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface TransactionDao {
 
-    @Query("SELECT * FROM transactions ORDER BY timestamp DESC")
-    fun getAllTransactions(): Flow<List<TransactionEntity>>
 
     @Query("SELECT * FROM transactions WHERE needsReview = 1 ORDER BY timestamp DESC")
     fun getUncategorizedTransactions(): Flow<List<TransactionEntity>>
 
     @Query("SELECT * FROM transactions WHERE referenceNumber = :refNo LIMIT 1")
     suspend fun findByReferenceNumber(refNo: String): TransactionEntity?
-
-    @Query("SELECT * FROM transactions WHERE id = :id LIMIT 1")
-    suspend fun getTransactionById(id: String): TransactionEntity?
 
     @Query("""
         SELECT * FROM transactions 
@@ -44,5 +39,17 @@ interface TransactionDao {
 
     @Delete
     suspend fun delete(transaction: TransactionEntity)
+
+    @Query("SELECT * FROM transactions ORDER BY timestamp DESC")
+    fun getAllTransactions(): Flow<List<TransactionEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTransaction(transaction: TransactionEntity)
+
+    @Query("SELECT * FROM transactions WHERE id = :transactionId")
+    suspend fun getTransactionById(transactionId: String): TransactionEntity?
+
+    @Query("UPDATE transactions SET category = :category WHERE id = :transactionId")
+    suspend fun updateCategory(transactionId: String, category: String)
 }
 

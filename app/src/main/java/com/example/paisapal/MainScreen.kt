@@ -1,5 +1,6 @@
 package com.example.paisapal
 
+import android.os.Build
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -58,15 +59,22 @@ fun MainScreen() {
         ) {
             composable("home") {
                 currentRoute = "home"
-                HomeScreen(
-                    onImportClick = {
-                        currentRoute = "import_sms"
-                        navController.navigate("import_sms")
-                    },
-                    onTransactionClick = { transaction ->
-                        navController.navigate("transaction_detail/${transaction.id}")
-                    }
-                )
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    HomeScreen(
+                        onImportClick = {
+                            navController.navigate("import_sms")
+                        },
+                        onTransactionClick = { transaction ->
+                            navController.navigate("transaction_detail/${transaction.id}")
+                        },
+                        onReviewClick = {
+                            navController.navigate("review")
+                        },
+                        onQuickAddClick = {
+                            // TODO: Show quick add dialog
+                        }
+                    )
+                }
             }
 
             composable("review") {
@@ -110,12 +118,16 @@ fun MainScreen() {
                     }
                 }
             }
-
             composable("import_sms") {
                 currentRoute = "import_sms"
                 ImportSmsScreen(
                     onBackClick = {
                         navController.popBackStack()
+                    },
+                    onImportComplete = {
+                        navController.navigate("home") {
+                            popUpTo("home") { inclusive = true }
+                        }
                     }
                 )
             }
