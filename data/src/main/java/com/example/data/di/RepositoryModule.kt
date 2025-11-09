@@ -15,12 +15,9 @@ import dagger.hilt.components.SingletonComponent
 abstract class RepositoryModule {
 
     @Binds
-    abstract fun bindTransactionRepository(
-        impl: TransactionRepositoryImpl
-    ): TransactionRepository
+    abstract fun bindTransactionRepository(impl: TransactionRepositoryImpl): TransactionRepository
 
     @Binds
-    abstract fun bindSmsRepository(
-        impl: SmsRepositoryImpl
-    ): SmsRepository
+    abstract fun bindSmsRepository(impl: SmsRepositoryImpl): SmsRepository
 }
+
