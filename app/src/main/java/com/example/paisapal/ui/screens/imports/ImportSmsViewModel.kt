@@ -59,7 +59,7 @@ class ImportSmsViewModel @Inject constructor(
                     val transaction = parser.parse(sms.body, sms.address, sms.date)
 
                     if (transaction != null) {
-                        // ✅ AUTO-CATEGORIZE BEFORE SAVING
+                        //  AUTO-CATEGORIZE BEFORE SAVING
                         val category = categorizationEngine.categorize(transaction)
                         val categorizedTransaction = transaction.copy(
                             category = category,
@@ -89,44 +89,35 @@ class ImportSmsViewModel @Inject constructor(
             }
         }
     }
-
     fun importBankSmsOnly() {
         viewModelScope.launch {
             _importState.value = ImportState.Loading
+            Log.d(TAG, "Starting SMS import...")
 
             try {
-                // Get existing transactions to check for duplicates
-                val existingTransactions = repository.getAllTransactions().first()
-                val existingSmsIds = existingTransactions.map {
-                    "${it.sender}_${it.timestamp}_${it.amount}"
-                }.toSet()
-
-                // Read bank SMS from last 30 days
                 val thirtyDaysAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
-                val allSms = smsProvider.readSmsSince(thirtyDaysAgo)
+                Log.d(TAG, "Looking for SMS since: $thirtyDaysAgo")
 
-                Log.d(TAG, "Found ${allSms.size} SMS from last 30 days")
+                val allSms = smsProvider.readSmsSince(thirtyDaysAgo)
+                Log.d(TAG, "Found ${allSms.size} SMS messages")
+
+                if (allSms.isEmpty()) {
+                    Log.w(TAG, "⚠️ No SMS found! Check permissions.")
+                    _importState.value = ImportState.Error("No SMS found. Check permissions.")
+                    return@launch
+                }
 
                 var successCount = 0
                 var failureCount = 0
                 var duplicateCount = 0
 
                 allSms.forEach { sms ->
-                    // Check if it's from a bank
+                    Log.d(TAG, "Processing SMS from: ${sms.address}")
+
                     if (isBankSms(sms.address)) {
-                        // Create unique ID for duplicate detection
-                        val smsId = "${sms.address}_${sms.date}_${extractAmount(sms.body)}"
-
-                        // Skip if already imported
-                        if (existingSmsIds.contains(smsId)) {
-                            duplicateCount++
-                            return@forEach
-                        }
-
                         val transaction = parser.parse(sms.body, sms.address, sms.date)
 
                         if (transaction != null) {
-                            // ✅ AUTO-CATEGORIZE BEFORE SAVING
                             val category = categorizationEngine.categorize(transaction)
                             val categorizedTransaction = transaction.copy(
                                 category = category,
@@ -136,9 +127,10 @@ class ImportSmsViewModel @Inject constructor(
                             repository.insert(categorizedTransaction)
                             successCount++
 
-                            Log.d(TAG, "Imported: ${transaction.merchantDisplayName ?: "Unknown"} - Rs.${transaction.amount} - Category: ${category ?: "Uncategorized"}")
+                            Log.d(TAG, "✅ Imported: ${transaction.amount} - ${category ?: "Uncategorized"}")
                         } else {
                             failureCount++
+                            Log.d(TAG, "❌ Failed to parse SMS")
                         }
                     }
                 }
@@ -150,14 +142,13 @@ class ImportSmsViewModel @Inject constructor(
                     total = allSms.size
                 )
 
-                Log.d(TAG, "Bank SMS import complete: $successCount imported, $failureCount failed, $duplicateCount duplicates skipped")
+                Log.d(TAG, "✅ Import complete: $successCount imported, $failureCount failed")
             } catch (e: Exception) {
-                Log.e(TAG, "Import failed", e)
+                Log.e(TAG, "❌ Import error", e)
                 _importState.value = ImportState.Error(e.message ?: "Unknown error")
             }
         }
     }
-
     private fun isBankSms(sender: String): Boolean {
         val bankKeywords = listOf(
             "bank", "hdfc", "icici", "sbi", "axis", "kotak", "indus",

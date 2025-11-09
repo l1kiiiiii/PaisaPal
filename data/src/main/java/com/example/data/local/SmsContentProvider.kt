@@ -1,78 +1,102 @@
 package com.example.data.local
 
 import android.content.Context
-import android.net.Uri
 import android.provider.Telephony
+import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
+data class SmsMessage(
+    val address: String,
+    val body: String,
+    val date: Long
+)
+
 class SmsContentProvider @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
 
-    data class SmsMessage(
-        val address: String,
-        val body: String,
-        val date: Long
-    )
-
     fun readAllSms(): List<SmsMessage> {
-        val smsList = mutableListOf<SmsMessage>()
-        val uri = Uri.parse("content://sms/inbox")
+        val messages = mutableListOf<SmsMessage>()
 
-        val cursor = context.contentResolver.query(
-            uri,
-            arrayOf("address", "body", "date"),
-            null,
-            null,
-            "date DESC"
-        )
+        try {
+            val cursor = context.contentResolver.query(
+                Telephony.Sms.CONTENT_URI,
+                arrayOf(
+                    Telephony.Sms.ADDRESS,
+                    Telephony.Sms.BODY,
+                    Telephony.Sms.DATE
+                ),
+                null,
+                null,
+                "${Telephony.Sms.DATE} DESC"
+            )
 
-        cursor?.use {
-            val addressIndex = it.getColumnIndex("address")
-            val bodyIndex = it.getColumnIndex("body")
-            val dateIndex = it.getColumnIndex("date")
+            cursor?.use {
+                val addressIndex = it.getColumnIndex(Telephony.Sms.ADDRESS)
+                val bodyIndex = it.getColumnIndex(Telephony.Sms.BODY)
+                val dateIndex = it.getColumnIndex(Telephony.Sms.DATE)
 
-            while (it.moveToNext()) {
-                val address = it.getString(addressIndex)
-                val body = it.getString(bodyIndex)
-                val date = it.getLong(dateIndex)
+                Log.d(TAG, "Total SMS found: ${it.count}")
 
-                smsList.add(SmsMessage(address, body, date))
+                while (it.moveToNext()) {
+                    val address = it.getString(addressIndex) ?: continue
+                    val body = it.getString(bodyIndex) ?: continue
+                    val date = it.getLong(dateIndex)
+
+                    messages.add(SmsMessage(address, body, date))
+                }
             }
+
+            Log.d(TAG, "Processed ${messages.size} SMS messages")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error reading SMS", e)
         }
 
-        return smsList
+        return messages
     }
 
     fun readSmsSince(timestamp: Long): List<SmsMessage> {
-        val smsList = mutableListOf<SmsMessage>()
-        val uri = Uri.parse("content://sms/inbox")
+        val messages = mutableListOf<SmsMessage>()
 
-        val cursor = context.contentResolver.query(
-            uri,
-            arrayOf("address", "body", "date"),
-            "date > ?",
-            arrayOf(timestamp.toString()),
-            "date DESC"
-        )
+        try {
+            val cursor = context.contentResolver.query(
+                Telephony.Sms.CONTENT_URI,
+                arrayOf(
+                    Telephony.Sms.ADDRESS,
+                    Telephony.Sms.BODY,
+                    Telephony.Sms.DATE
+                ),
+                "${Telephony.Sms.DATE} >= ?",  //  Filter by date
+                arrayOf(timestamp.toString()),
+                "${Telephony.Sms.DATE} DESC"
+            )
 
-        cursor?.use {
-            val addressIndex = it.getColumnIndex("address")
-            val bodyIndex = it.getColumnIndex("body")
-            val dateIndex = it.getColumnIndex("date")
+            cursor?.use {
+                val addressIndex = it.getColumnIndex(Telephony.Sms.ADDRESS)
+                val bodyIndex = it.getColumnIndex(Telephony.Sms.BODY)
+                val dateIndex = it.getColumnIndex(Telephony.Sms.DATE)
 
-            while (it.moveToNext()) {
-                val address = it.getString(addressIndex)
-                val body = it.getString(bodyIndex)
-                val date = it.getLong(dateIndex)
+                Log.d(TAG, "SMS since $timestamp: ${it.count}")
 
-                smsList.add(SmsMessage(address, body, date))
+                while (it.moveToNext()) {
+                    val address = it.getString(addressIndex) ?: continue
+                    val body = it.getString(bodyIndex) ?: continue
+                    val date = it.getLong(dateIndex)
+
+                    messages.add(SmsMessage(address, body, date))
+                }
             }
+
+            Log.d(TAG, "Processed ${messages.size} recent SMS")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error reading recent SMS", e)
         }
 
-        return smsList
+        return messages
+    }
+
+    companion object {
+        private const val TAG = "SmsContentProvider"
     }
 }
