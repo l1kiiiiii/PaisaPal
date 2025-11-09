@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.paisapal.ui.components.CompactTopBar
 import com.example.paisapal.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,20 +42,7 @@ fun SettingsScreen(
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Settings") },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = TextWhite)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = PrimaryGreen,
-                    titleContentColor = TextWhite
-                )
-            )
-        }
+        topBar = { CompactTopBar("Settings", showSettings = false) }
     ) { paddingValues ->
         Column(
             modifier = Modifier

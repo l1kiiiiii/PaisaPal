@@ -14,5 +14,6 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     // Instrumented Tests (Android tests)
     testImplementation(libs.junit)
+    implementation(libs.javax.inject)
 
 }

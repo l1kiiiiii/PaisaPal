@@ -11,11 +11,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -26,8 +28,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -41,10 +41,10 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.domain.model.Transaction
 import com.example.domain.model.TransactionType
+import com.example.paisapal.ui.components.CompactTopBar
 import com.example.paisapal.ui.theme.BackgroundDark
 import com.example.paisapal.ui.theme.CreditGreen
 import com.example.paisapal.ui.theme.DebitRed
-import com.example.paisapal.ui.theme.PrimaryGreen
 import com.example.paisapal.ui.theme.PrimaryGreenLight
 import com.example.paisapal.ui.theme.SurfaceDark
 import com.example.paisapal.ui.theme.SurfaceLighter
@@ -61,31 +61,10 @@ fun HomeScreen(
     val transactions by viewModel.transactions.collectAsState()
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "PaisaPal",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 24.sp
-                    )
-                },
-                actions = {
-                    IconButton(onClick = onImportClick) {
-                        Icon(
-                            imageVector = Icons.Default.Download,
-                            contentDescription = "Import SMS",
-                            tint = TextWhite
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = PrimaryGreen,
-                    titleContentColor = TextWhite,
-                    actionIconContentColor = TextWhite
-                )
-            )
-        }
+        containerColor = Color.Black,
+            topBar = {
+                CompactTopBar("PaisaPal")
+            }
     ) { paddingValues ->
 
         if (transactions.isEmpty()) {

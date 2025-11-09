@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.domain.model.Transaction
+import com.example.paisapal.ui.components.CompactTopBar
 import com.example.paisapal.ui.screens.home.HomeViewModel
 import com.example.paisapal.ui.theme.*
 
@@ -30,12 +31,7 @@ fun ReviewScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Review Transactions") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = PrimaryGreen
-                )
-            )
+            CompactTopBar("Review")
         }
     ) { paddingValues ->
 

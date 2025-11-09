@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.domain.usecase.InsightsPeriod
+import com.example.paisapal.ui.components.CompactTopBar
 import com.example.paisapal.ui.theme.*
 import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
 import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
@@ -33,15 +34,7 @@ fun InsightsScreen(
     val isLoading by viewModel.isLoading.collectAsState()
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Insights") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = PrimaryGreen,
-                    titleContentColor = TextWhite
-                )
-            )
-        }
+        topBar = { CompactTopBar("Insights") }
     ) { paddingValues ->
 
         if (isLoading || insightsData == null) {
