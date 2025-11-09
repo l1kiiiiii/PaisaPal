@@ -7,176 +7,117 @@ import com.example.data.local.SmsContentProvider
 import com.example.domain.engine.CategorizationEngine
 import com.example.domain.engine.TransactionParser
 import com.example.domain.repository.TransactionRepository
+import com.example.domain.usecase.ImportHistoricalSmsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+
 
 @HiltViewModel
 class ImportSmsViewModel @Inject constructor(
     private val smsProvider: SmsContentProvider,
     private val parser: TransactionParser,
     private val categorizationEngine: CategorizationEngine,
-    private val repository: TransactionRepository
+    private val repository: TransactionRepository,
+    private val importHistoricalSmsUseCase:
+    ImportHistoricalSmsUseCase
 ) : ViewModel() {
 
-    private val _importState = MutableStateFlow<ImportState>(ImportState.Idle)
+    sealed class ImportState {
+        object Idle : ImportState()
+        object PermissionExplanation : ImportState()
+
+        data class Loading(
+            val messagesScanned: Int = 0,
+            val totalMessages: Int = 0,
+            val transactionsFound: Int = 0,
+            val categorized: Int = 0
+        ) : ImportState()
+
+        data class Success(
+            val imported: Int,
+            val duplicates: Int,
+            val failed: Int,
+            val total: Int
+        ) : ImportState()
+
+        data class Error(val message: String) : ImportState()
+    }
+
+    private val _importState = MutableStateFlow<ImportState>(ImportState.PermissionExplanation)
     val importState: StateFlow<ImportState> = _importState.asStateFlow()
 
-    fun importAllSms() {
-        viewModelScope.launch {
-            _importState.value = ImportState.Loading
-
-            try {
-                // Get existing transactions to check for duplicates
-                val existingTransactions = repository.getAllTransactions().first()
-                val existingSmsIds = existingTransactions.map {
-                    "${it.sender}_${it.timestamp}_${it.amount}"
-                }.toSet()
-
-                // Read all SMS
-                val allSms = smsProvider.readAllSms()
-                Log.d(TAG, "Found ${allSms.size} SMS messages")
-
-                var successCount = 0
-                var failureCount = 0
-                var duplicateCount = 0
-
-                // Parse each SMS
-                allSms.forEach { sms ->
-                    // Create unique ID for duplicate detection
-                    val smsId = "${sms.address}_${sms.date}_${extractAmount(sms.body)}"
-
-                    // Skip if already imported
-                    if (existingSmsIds.contains(smsId)) {
-                        duplicateCount++
-                        return@forEach
-                    }
-
-                    val transaction = parser.parse(sms.body, sms.address, sms.date)
-
-                    if (transaction != null) {
-                        //  AUTO-CATEGORIZE BEFORE SAVING
-                        val category = categorizationEngine.categorize(transaction)
-                        val categorizedTransaction = transaction.copy(
-                            category = category,
-                            needsReview = category == null
-                        )
-
-                        repository.insert(categorizedTransaction)
-                        successCount++
-
-                        Log.d(TAG, "Imported: ${transaction.amount} - Category: ${category ?: "Uncategorized"}")
-                    } else {
-                        failureCount++
-                    }
-                }
-
-                _importState.value = ImportState.Success(
-                    imported = successCount,
-                    failed = failureCount,
-                    duplicates = duplicateCount,
-                    total = allSms.size
-                )
-
-                Log.d(TAG, "Import complete: $successCount imported, $failureCount failed, $duplicateCount duplicates skipped")
-            } catch (e: Exception) {
-                Log.e(TAG, "Import failed", e)
-                _importState.value = ImportState.Error(e.message ?: "Unknown error")
-            }
-        }
+    fun acknowledgePermissionExplanation() {
+        _importState.value = ImportState.Idle
     }
+
     fun importBankSmsOnly() {
         viewModelScope.launch {
-            _importState.value = ImportState.Loading
-            Log.d(TAG, "Starting SMS import...")
-
+            _importState.value = ImportState.Loading()
             try {
-                val thirtyDaysAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
-                Log.d(TAG, "Looking for SMS since: $thirtyDaysAgo")
-
-                val allSms = smsProvider.readSmsSince(thirtyDaysAgo)
-                Log.d(TAG, "Found ${allSms.size} SMS messages")
-
-                if (allSms.isEmpty()) {
-                    Log.w(TAG, "⚠️ No SMS found! Check permissions.")
-                    _importState.value = ImportState.Error("No SMS found. Check permissions.")
-                    return@launch
-                }
-
-                var successCount = 0
-                var failureCount = 0
-                var duplicateCount = 0
-
-                allSms.forEach { sms ->
-                    Log.d(TAG, "Processing SMS from: ${sms.address}")
-
-                    if (isBankSms(sms.address)) {
-                        val transaction = parser.parse(sms.body, sms.address, sms.date)
-
-                        if (transaction != null) {
-                            val category = categorizationEngine.categorize(transaction)
-                            val categorizedTransaction = transaction.copy(
-                                category = category,
-                                needsReview = category == null
+                importHistoricalSmsUseCase(onlyBankSms = true).collect { progress ->
+                    when (progress) {
+                        is com.example.domain.usecase.ImportHistoricalSmsUseCase.ImportProgress.Scanning -> {
+                            _importState.value = ImportState.Loading(
+                                messagesScanned = progress.scanned,
+                                totalMessages = progress.total,
+                                transactionsFound = progress.found,
+                                categorized = progress.categorized
                             )
-
-                            repository.insert(categorizedTransaction)
-                            successCount++
-
-                            Log.d(TAG, "✅ Imported: ${transaction.amount} - ${category ?: "Uncategorized"}")
-                        } else {
-                            failureCount++
-                            Log.d(TAG, "❌ Failed to parse SMS")
+                        }
+                        is com.example.domain.usecase.ImportHistoricalSmsUseCase.ImportProgress.Complete -> {
+                            _importState.value = ImportState.Success(
+                                imported = progress.imported,
+                                duplicates = progress.duplicates,
+                                failed = progress.failed,
+                                total = progress.total
+                            )
+                        }
+                        is com.example.domain.usecase.ImportHistoricalSmsUseCase.ImportProgress.Error -> {
+                            _importState.value = ImportState.Error(progress.message)
                         }
                     }
                 }
-
-                _importState.value = ImportState.Success(
-                    imported = successCount,
-                    failed = failureCount,
-                    duplicates = duplicateCount,
-                    total = allSms.size
-                )
-
-                Log.d(TAG, "✅ Import complete: $successCount imported, $failureCount failed")
             } catch (e: Exception) {
-                Log.e(TAG, "❌ Import error", e)
-                _importState.value = ImportState.Error(e.message ?: "Unknown error")
+                _importState.value = ImportState.Error(e.message ?: "Import failed")
             }
         }
     }
-    private fun isBankSms(sender: String): Boolean {
-        val bankKeywords = listOf(
-            "bank", "hdfc", "icici", "sbi", "axis", "kotak", "indus",
-            "paytm", "gpay", "phonepe", "amazon", "googlepay", "bhim"
-        )
-        return bankKeywords.any { sender.contains(it, ignoreCase = true) }
-    }
 
-    // Extract amount from SMS for duplicate detection
-    private fun extractAmount(smsBody: String): String {
-        val amountPattern = """(?:Rs\.?|INR)\s*[:=]?\s*([\d,]+\.?\d*)""".toRegex(RegexOption.IGNORE_CASE)
-        val match = amountPattern.find(smsBody)
-        return match?.groupValues?.get(1)?.replace(",", "") ?: "0"
+    fun importAllSms() {
+        viewModelScope.launch {
+            _importState.value = ImportState.Loading()
+            try {
+                importHistoricalSmsUseCase(onlyBankSms = false).collect { progress ->
+                    when (progress) {
+                        is com.example.domain.usecase.ImportHistoricalSmsUseCase.ImportProgress.Scanning -> {
+                            _importState.value = ImportState.Loading(
+                                messagesScanned = progress.scanned,
+                                totalMessages = progress.total,
+                                transactionsFound = progress.found,
+                                categorized = progress.categorized
+                            )
+                        }
+                        is com.example.domain.usecase.ImportHistoricalSmsUseCase.ImportProgress.Complete -> {
+                            _importState.value = ImportState.Success(
+                                imported = progress.imported,
+                                duplicates = progress.duplicates,
+                                failed = progress.failed,
+                                total = progress.total
+                            )
+                        }
+                        is com.example.domain.usecase.ImportHistoricalSmsUseCase.ImportProgress.Error -> {
+                            _importState.value = ImportState.Error(progress.message)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                _importState.value = ImportState.Error(e.message ?: "Import failed")
+            }
+        }
     }
-
-    companion object {
-        private const val TAG = "ImportSmsViewModel"
-    }
-}
-
-sealed class ImportState {
-    data object Idle : ImportState()
-    data object Loading : ImportState()
-    data class Success(
-        val imported: Int,
-        val failed: Int,
-        val duplicates: Int,
-        val total: Int
-    ) : ImportState()
-    data class Error(val message: String) : ImportState()
 }

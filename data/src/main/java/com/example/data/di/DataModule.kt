@@ -53,7 +53,7 @@ object DataModule {
     fun provideBudgetDao(database: AppDatabase): BudgetDao {
         return database.budgetDao()
     }
-
+/*
     @Provides
     @Singleton
     fun provideTransactionRepository(
@@ -61,7 +61,7 @@ object DataModule {
     ): TransactionRepository {
         return TransactionRepositoryImpl(transactionDao)
     }
-
+*/
     @Provides
     @Singleton
     fun provideBudgetRepository(
