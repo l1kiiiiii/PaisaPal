@@ -17,7 +17,7 @@ class PaisaPalApp : Application() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannels()
-        scheduleTransactionMatching()
+       // scheduleTransactionMatching()
     }
 
     private fun createNotificationChannels() {
@@ -34,9 +34,9 @@ class PaisaPalApp : Application() {
             notificationManager.createNotificationChannel(channel)
         }
     }
-
+/*
     private fun scheduleTransactionMatching() {
-        val matchingWork = PeriodicWorkRequestBuilder<TransactionMatchWorker>(
+        val matchingWork = PeriodicWorkR    equestBuilder<TransactionMatchWorker>(
             15, // Run every 15 minutes
             TimeUnit.MINUTES
         ).build()
@@ -46,7 +46,7 @@ class PaisaPalApp : Application() {
             ExistingPeriodicWorkPolicy.KEEP,
             matchingWork
         )
-    }
+    }*/
 
     companion object {
         const val CHANNEL_ID_TRANSACTIONS = "transaction_channel"
