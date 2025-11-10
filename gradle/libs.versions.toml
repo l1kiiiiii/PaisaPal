@@ -3,6 +3,7 @@ agp = "8.13.0"
 composeBom = "2024.06.00"
 composeM3 = "1.13.1"
 composeVersion = "1.13.1"
+javaxInject = "1"
 kotlin = "2.0.0"
 compose = "1.7.0"
 composeMaterial3 = "1.2.1"
@@ -17,6 +18,10 @@ lifecycleViewmodelCompose = "2.8.2"
 coreKtx = "1.13.1"
 activityCompose = "1.9.0"
 workRuntimeKtx = "2.9.0"
+
+junit = "4.13.2"
+androidxTestJunit = "1.1.5"
+androidxTestEspresso = "3.5.1"
 
 [libraries]
 androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
@@ -42,6 +47,7 @@ hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref
 hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }
 hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
 
+javax-inject = { module = "javax.inject:javax.inject", version.ref = "javaxInject" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutinesCore" }
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
@@ -49,6 +55,12 @@ room-compiler = { group = "androidx.room", name = "room-compiler", version.ref =
 
 lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycleViewmodelCompose" }
 vico-compose-m3 = { module = "com.patrykandpatrick.vico:compose-m3", version.ref = "composeM3" }
+
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestJunit" }
+androidx-test-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "androidxTestEspresso" }
+
+
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

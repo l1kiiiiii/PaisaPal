@@ -1,20 +1,23 @@
 package com.example.paisapal.ui.screens.settings
 
+import android.content.Context
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.paisapal.ui.components.CompactTopBar
 import com.example.paisapal.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -23,9 +26,11 @@ fun SettingsScreen(
     onBackClick: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     var transactionAlerts by remember { mutableStateOf(true) }
     var budgetAlerts by remember { mutableStateOf(true) }
     val matchingState by viewModel.matchingState.collectAsState()
+    val hasNotificationPermission = remember { isNotificationServiceEnabled(context) }
 
     // Show toast when matching completes
     LaunchedEffect(matchingState) {
@@ -41,20 +46,7 @@ fun SettingsScreen(
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Settings") },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = TextWhite)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = PrimaryGreen,
-                    titleContentColor = TextWhite
-                )
-            )
-        }
+        topBar = { CompactTopBar("Settings", showSettings = false) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -65,6 +57,12 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
+            // Notification Access Card
+            NotificationAccessCard(
+                hasPermission = hasNotificationPermission,
+                onRequestPermission = { openNotificationSettings(context) }
+            )
+
             // Data Section
             SettingsSection(title = "Data") {
                 SettingsItem(label = "Merchant Mapping", onClick = {})
@@ -100,7 +98,11 @@ fun SettingsScreen(
                     }
                     Switch(
                         checked = transactionAlerts,
-                        onCheckedChange = { transactionAlerts = it }
+                        onCheckedChange = { transactionAlerts = it },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = PrimaryGreen,
+                            checkedTrackColor = PrimaryGreen.copy(alpha = 0.5f)
+                        )
                     )
                 }
 
@@ -119,7 +121,11 @@ fun SettingsScreen(
                     }
                     Switch(
                         checked = budgetAlerts,
-                        onCheckedChange = { budgetAlerts = it }
+                        onCheckedChange = { budgetAlerts = it },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = PrimaryGreen,
+                            checkedTrackColor = PrimaryGreen.copy(alpha = 0.5f)
+                        )
                     )
                 }
             }
@@ -244,4 +250,87 @@ private fun SettingsItem(
             Text("→", color = TextGray)
         }
     }
+}
+
+@Composable
+private fun NotificationAccessCard(
+    hasPermission: Boolean,
+    onRequestPermission: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = SurfaceDark
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Notification Access",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = TextWhite
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "Allow PaisaPal to read notifications for better transaction categorization",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextGray
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                if (hasPermission) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = PrimaryGreen.copy(alpha = 0.2f)
+                    ) {
+                        Text(
+                            text = "✓ Enabled",
+                            color = PrimaryGreen,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+            }
+
+            if (!hasPermission) {
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Button(
+                    onClick = onRequestPermission,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PrimaryBlue
+                    )
+                ) {
+                    Text("Grant Permission")
+                }
+            }
+        }
+    }
+}
+
+// Helper functions
+private fun isNotificationServiceEnabled(context: Context): Boolean {
+    val enabledListeners = Settings.Secure.getString(
+        context.contentResolver,
+        "enabled_notification_listeners"
+    )
+    return enabledListeners?.contains(context.packageName) == true
+}
+
+private fun openNotificationSettings(context: Context) {
+    val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+    context.startActivity(intent)
 }

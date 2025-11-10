@@ -12,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.paisapal"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -25,10 +25,15 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        debug {
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 
@@ -87,5 +92,13 @@ dependencies {
     implementation(libs.compose)
     implementation(libs.vico.compose.m3)
     implementation(libs.core)
+
+    // Instrumented Tests (Android tests)
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.espresso.core)
+    androidTestImplementation(libs.compose.ui.tooling)
+
+    implementation(libs.javax.inject)
 
 }

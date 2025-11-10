@@ -35,6 +35,7 @@ class BudgetRepositoryImpl @Inject constructor(
         budgetDao.deleteBudget(budget.toEntity())
     }
 
+
     private fun BudgetEntity.toDomain(): Budget {
         return Budget(
             id = id,

@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.paisapal.ui.components.CompactTopBar
 import com.example.paisapal.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -32,13 +33,7 @@ fun BudgetScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Budgets") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = PrimaryGreen,
-                    titleContentColor = TextWhite
-                )
-            )
+            CompactTopBar("Budgets")
         },
         floatingActionButton = {
             FloatingActionButton(
