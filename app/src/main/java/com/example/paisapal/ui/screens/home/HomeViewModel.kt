@@ -6,10 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.example.domain.model.Transaction
 import com.example.domain.repository.TransactionRepository
 import com.example.domain.usecase.GetBudgetSummaryUseCase
+import com.example.domain.usecase.BudgetSummary
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import java.util.*
 import javax.inject.Inject
 
 @HiltViewModel
@@ -24,7 +24,7 @@ class HomeViewModel @Inject constructor(
     private val _smartFeedItems = MutableStateFlow<List<SmartFeedItem>>(emptyList())
     val smartFeedItems: StateFlow<List<SmartFeedItem>> = _smartFeedItems.asStateFlow()
 
-    private val _isLoading = MutableStateFlow(false)
+    private val _isLoading = MutableStateFlow(true) // Start as true
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     init {
@@ -33,20 +33,20 @@ class HomeViewModel @Inject constructor(
 
     private fun loadData() {
         viewModelScope.launch {
-            _isLoading.value = true
             try {
-                // Load transactions
-                repository.getAllTransactions().collect { transactionList ->
-                    _transactions.value = transactionList
-                }
-
-                // Load budget summaries and build smart feed
-                getBudgetSummaryUseCase().collect { budgetSummaries ->
-                    _smartFeedItems.value = buildSmartFeed(_transactions.value, budgetSummaries)
+                // Combine both flows and update UI when either changes
+                combine(
+                    repository.getAllTransactions(),
+                    getBudgetSummaryUseCase()
+                ) { transactions, budgetSummaries ->
+                    _transactions.value = transactions
+                    buildSmartFeed(transactions, budgetSummaries)
+                }.collect { smartFeed ->
+                    _smartFeedItems.value = smartFeed
+                    _isLoading.value = false // Set to false after first emission
                 }
             } catch (e: Exception) {
                 Log.e("HomeViewModel", "Error loading data", e)
-            } finally {
                 _isLoading.value = false
             }
         }
@@ -65,13 +65,13 @@ class HomeViewModel @Inject constructor(
 
     private fun buildSmartFeed(
         transactions: List<Transaction>,
-        budgetSummaries: List<com.example.domain.usecase.BudgetSummary>
+        budgetSummaries: List<BudgetSummary>
     ): List<SmartFeedItem> {
         val feedItems = mutableListOf<SmartFeedItem>()
 
         // 1. Overview Card with real budget data
         val criticalBudget = budgetSummaries
-            .filter { it.progress >= 0.8f } // 80% or more spent
+            .filter { it.progress >= 0.8f }
             .maxByOrNull { it.progress }
 
         if (criticalBudget != null) {
@@ -85,7 +85,6 @@ class HomeViewModel @Inject constructor(
                 )
             )
         } else {
-            // Default overview if no critical budgets
             feedItems.add(
                 SmartFeedItem.OverviewCard(
                     totalSpent = transactions

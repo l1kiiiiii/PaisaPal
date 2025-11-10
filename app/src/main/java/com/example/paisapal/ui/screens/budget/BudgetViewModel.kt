@@ -24,7 +24,7 @@ class BudgetViewModel @Inject constructor(
     private val _budgetSummaries = MutableStateFlow<List<BudgetSummary>>(emptyList())
     val budgetSummaries: StateFlow<List<BudgetSummary>> = _budgetSummaries.asStateFlow()
 
-    private val _isLoading = MutableStateFlow(false)
+    private val _isLoading = MutableStateFlow(true) // Start as true
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     init {
@@ -33,16 +33,15 @@ class BudgetViewModel @Inject constructor(
 
     fun loadBudgets() {
         viewModelScope.launch {
-            _isLoading.value = true
             try {
-                // GetBudgetSummaryUseCase returns a Flow, so we collect it
+                // Collect from the Flow and update loading state after first emission
                 getBudgetSummaryUseCase().collect { summaries ->
                     _budgetSummaries.value = summaries
+                    _isLoading.value = false // Set to false after first data arrives
                 }
             } catch (e: Exception) {
                 // Handle error
                 _budgetSummaries.value = emptyList()
-            } finally {
                 _isLoading.value = false
             }
         }
@@ -65,21 +64,21 @@ class BudgetViewModel @Inject constructor(
                 createdAt = System.currentTimeMillis()
             )
             budgetRepository.insertBudget(budget)
-            loadBudgets()
+            // Data will auto-refresh via Flow in loadBudgets()
         }
     }
 
     fun updateBudget(budget: Budget) {
         viewModelScope.launch {
             budgetRepository.updateBudget(budget)
-            loadBudgets()
+            // Data will auto-refresh via Flow in loadBudgets()
         }
     }
 
     fun deleteBudget(budget: Budget) {
         viewModelScope.launch {
             budgetRepository.deleteBudget(budget)
-            loadBudgets()
+            // Data will auto-refresh via Flow in loadBudgets()
         }
     }
 
@@ -87,7 +86,7 @@ class BudgetViewModel @Inject constructor(
         viewModelScope.launch {
             val updated = budget.copy(isActive = !budget.isActive)
             budgetRepository.updateBudget(updated)
-            loadBudgets()
+            // Data will auto-refresh via Flow in loadBudgets()
         }
     }
 }
