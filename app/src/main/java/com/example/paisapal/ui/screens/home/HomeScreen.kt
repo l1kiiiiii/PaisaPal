@@ -24,7 +24,6 @@ import com.example.domain.model.TransactionType
 import com.example.paisapal.ui.components.CompactTopBar
 import com.example.paisapal.ui.theme.*
 
-@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(

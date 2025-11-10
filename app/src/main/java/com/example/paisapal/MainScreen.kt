@@ -1,9 +1,18 @@
 package com.example.paisapal
 
-import android.os.Build
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavType
@@ -59,22 +68,19 @@ fun MainScreen() {
         ) {
             composable("home") {
                 currentRoute = "home"
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    HomeScreen(
-                        onImportClick = {
-                            navController.navigate("import_sms")
-                        },
-                        onTransactionClick = { transaction ->
-                            navController.navigate("transaction_detail/${transaction.id}")
-                        },
-                        onReviewClick = {
-                            navController.navigate("review")
-                        },
-                        onQuickAddClick = {
-                            // TODO: Show quick add dialog
-                        }
-                    )
-                }
+                HomeScreen(
+                    onImportClick = {
+                        navController.navigate("import_sms")
+                    },
+                    onTransactionClick = { transaction ->
+                        navController.navigate("transaction_detail/${transaction.id}")
+                    },
+                    onReviewClick = {
+                        navController.navigate("review")
+                    },
+                    onQuickAddClick = {
+                    }
+                )
             }
 
             composable("review") {
