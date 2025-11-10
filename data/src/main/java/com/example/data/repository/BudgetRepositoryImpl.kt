@@ -35,7 +35,6 @@ class BudgetRepositoryImpl @Inject constructor(
         budgetDao.deleteBudget(budget.toEntity())
     }
 
-
     private fun BudgetEntity.toDomain(): Budget {
         return Budget(
             id = id,
@@ -43,7 +42,7 @@ class BudgetRepositoryImpl @Inject constructor(
             limitAmount = limitAmount,
             spentAmount = 0.0, // Will be calculated from transactions
             period = BudgetPeriod.valueOf(period),
-            alertThreshold = alertThreshold,
+            alertThreshold = alertThreshold.toFloat(), // Convert Int to Float
             isActive = isActive,
             createdAt = createdAt
         )
@@ -55,7 +54,7 @@ class BudgetRepositoryImpl @Inject constructor(
             category = category,
             limitAmount = limitAmount,
             period = period.name,
-            alertThreshold = alertThreshold,
+            alertThreshold = alertThreshold.toInt(), // Convert Float to Int
             isActive = isActive,
             createdAt = createdAt
         )

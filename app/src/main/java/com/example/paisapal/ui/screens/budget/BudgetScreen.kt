@@ -14,11 +14,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.domain.usecase.BudgetSummary
 import com.example.paisapal.ui.components.CompactTopBar
 import com.example.paisapal.ui.theme.*
 
@@ -27,7 +27,7 @@ import com.example.paisapal.ui.theme.*
 fun BudgetScreen(
     viewModel: BudgetViewModel = hiltViewModel()
 ) {
-    val budgetSummary by viewModel.budgetSummary.collectAsState()
+    val budgetSummaries by viewModel.budgetSummaries.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
 
@@ -45,7 +45,7 @@ fun BudgetScreen(
         }
     ) { paddingValues ->
 
-        if (isLoading || budgetSummary == null) {
+        if (isLoading) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -54,6 +54,28 @@ fun BudgetScreen(
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(color = PrimaryGreenLight)
+            }
+        } else if (budgetSummaries.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(BackgroundDark)
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        "No budgets yet",
+                        fontSize = 18.sp,
+                        color = TextGray
+                    )
+                    Button(onClick = { showAddDialog = true }) {
+                        Text("Create Your First Budget")
+                    }
+                }
             }
         } else {
             LazyColumn(
@@ -64,15 +86,18 @@ fun BudgetScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Overall Budget Card
+                // Overall Summary Card
                 item {
-                    OverallBudgetCard(budgetSummary!!)
+                    OverallBudgetCard(budgetSummaries)
                 }
 
-                // Alerts
-                if (budgetSummary!!.overBudgetCount > 0 || budgetSummary!!.nearLimitCount > 0) {
+                // Alerts Card
+                val overBudgetCount = budgetSummaries.count { it.isOverBudget }
+                val nearLimitCount = budgetSummaries.count { it.progress >= 0.8f && !it.isOverBudget }
+
+                if (overBudgetCount > 0 || nearLimitCount > 0) {
                     item {
-                        AlertsCard(budgetSummary!!)
+                        AlertsCard(overBudgetCount, nearLimitCount)
                     }
                 }
 
@@ -87,8 +112,22 @@ fun BudgetScreen(
                 }
 
                 // Category Budget List
-                items(budgetSummary!!.categoryBudgets) { budget ->
-                    BudgetCard(budget, onEdit = { /* TODO */ })
+                items(budgetSummaries) { budget ->
+                    BudgetCard(
+                        budget = budget,
+                        onDelete = { viewModel.deleteBudget(
+                            com.example.domain.model.Budget(
+                                id = budget.category, // You'll need to store actual budget ID
+                                category = budget.category,
+                                limitAmount = budget.budgetAmount,
+                                spentAmount = budget.spentAmount,
+                                period = com.example.domain.model.BudgetPeriod.MONTHLY,
+                                alertThreshold = 0.8f,
+                                isActive = true,
+                                createdAt = System.currentTimeMillis()
+                            )
+                        )}
+                    )
                 }
             }
         }
@@ -106,9 +145,13 @@ fun BudgetScreen(
 }
 
 @Composable
-private fun OverallBudgetCard(summary: com.example.domain.model.BudgetSummary) {
+private fun OverallBudgetCard(summaries: List<BudgetSummary>) {
+    val totalBudget = summaries.sumOf { it.budgetAmount }
+    val totalSpent = summaries.sumOf { it.spentAmount }
+    val overallProgress = if (totalBudget > 0) (totalSpent / totalBudget).toFloat() else 0f
+
     val progress by animateFloatAsState(
-        targetValue = summary.usagePercentage / 100f,
+        targetValue = overallProgress,
         label = "progress"
     )
 
@@ -135,25 +178,25 @@ private fun OverallBudgetCard(summary: com.example.domain.model.BudgetSummary) {
             ) {
                 Column {
                     Text(
-                        "₹${String.format("%.0f", summary.totalSpent)}",
+                        "₹${String.format("%.0f", totalSpent)}",
                         fontSize = 32.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (summary.totalSpent > summary.totalBudget) DebitRed else TextWhite
+                        color = if (totalSpent > totalBudget) DebitRed else TextWhite
                     )
                     Text(
-                        "of ₹${String.format("%.0f", summary.totalBudget)}",
+                        "of ₹${String.format("%.0f", totalBudget)}",
                         fontSize = 14.sp,
                         color = TextGray
                     )
                 }
 
                 Text(
-                    "${String.format("%.0f", summary.usagePercentage)}%",
+                    "${String.format("%.0f", overallProgress * 100)}%",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     color = when {
-                        summary.usagePercentage >= 100 -> DebitRed
-                        summary.usagePercentage >= 80 -> WarningOrange
+                        overallProgress >= 1.0f -> DebitRed
+                        overallProgress >= 0.8f -> WarningOrange
                         else -> CreditGreen
                     }
                 )
@@ -167,8 +210,8 @@ private fun OverallBudgetCard(summary: com.example.domain.model.BudgetSummary) {
                     .fillMaxWidth()
                     .height(12.dp),
                 color = when {
-                    summary.usagePercentage >= 100 -> DebitRed
-                    summary.usagePercentage >= 80 -> WarningOrange
+                    overallProgress >= 1.0f -> DebitRed
+                    overallProgress >= 0.8f -> WarningOrange
                     else -> PrimaryGreenLight
                 },
                 trackColor = DividerColor,
@@ -178,12 +221,12 @@ private fun OverallBudgetCard(summary: com.example.domain.model.BudgetSummary) {
 }
 
 @Composable
-private fun AlertsCard(summary: com.example.domain.model.BudgetSummary) {
+private fun AlertsCard(overBudgetCount: Int, nearLimitCount: Int) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (summary.overBudgetCount > 0) DebitRed.copy(alpha = 0.2f) else WarningOrange.copy(alpha = 0.2f)
+            containerColor = if (overBudgetCount > 0) DebitRed.copy(alpha = 0.2f) else WarningOrange.copy(alpha = 0.2f)
         )
     ) {
         Row(
@@ -194,20 +237,20 @@ private fun AlertsCard(summary: com.example.domain.model.BudgetSummary) {
             Icon(
                 Icons.Default.Warning,
                 contentDescription = null,
-                tint = if (summary.overBudgetCount > 0) DebitRed else WarningOrange
+                tint = if (overBudgetCount > 0) DebitRed else WarningOrange
             )
 
             Column {
-                if (summary.overBudgetCount > 0) {
+                if (overBudgetCount > 0) {
                     Text(
-                        "${summary.overBudgetCount} budget(s) exceeded",
+                        "$overBudgetCount budget(s) exceeded",
                         fontWeight = FontWeight.Bold,
                         color = TextWhite
                     )
                 }
-                if (summary.nearLimitCount > 0) {
+                if (nearLimitCount > 0) {
                     Text(
-                        "${summary.nearLimitCount} budget(s) near limit",
+                        "$nearLimitCount budget(s) near limit",
                         fontSize = 12.sp,
                         color = TextGray
                     )
@@ -219,18 +262,16 @@ private fun AlertsCard(summary: com.example.domain.model.BudgetSummary) {
 
 @Composable
 private fun BudgetCard(
-    budget: com.example.domain.model.Budget,
-    onEdit: () -> Unit
+    budget: BudgetSummary,
+    onDelete: () -> Unit
 ) {
     val progress by animateFloatAsState(
-        targetValue = (budget.usagePercentage / 100f).coerceIn(0f, 1f),
+        targetValue = budget.progress,
         label = "progress"
     )
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onEdit() },
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = SurfaceDark)
     ) {
@@ -250,12 +291,12 @@ private fun BudgetCard(
                 )
 
                 Text(
-                    "${String.format("%.0f", budget.usagePercentage)}%",
+                    "${String.format("%.0f", budget.progress * 100)}%",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = when {
                         budget.isOverBudget -> DebitRed
-                        budget.isNearLimit -> WarningOrange
+                        budget.progress >= 0.8f -> WarningOrange
                         else -> CreditGreen
                     }
                 )
@@ -268,7 +309,7 @@ private fun BudgetCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    "₹${String.format("%.0f", budget.spentAmount)} / ₹${String.format("%.0f", budget.limitAmount)}",
+                    "₹${String.format("%.0f", budget.spentAmount)} / ₹${String.format("%.0f", budget.budgetAmount)}",
                     fontSize = 12.sp,
                     color = TextGray
                 )
@@ -283,13 +324,13 @@ private fun BudgetCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             LinearProgressIndicator(
-                progress = { progress },
+                progress = { progress.coerceIn(0f, 1f) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp),
                 color = when {
                     budget.isOverBudget -> DebitRed
-                    budget.isNearLimit -> WarningOrange
+                    budget.progress >= 0.8f -> WarningOrange
                     else -> PrimaryGreenLight
                 },
                 trackColor = DividerColor,
