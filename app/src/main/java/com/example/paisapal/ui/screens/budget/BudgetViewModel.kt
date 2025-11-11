@@ -1,12 +1,11 @@
 package com.example.paisapal.ui.screens.budget
 
-
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.domain.model.Budget
 import com.example.domain.model.BudgetPeriod
-import com.example.domain.model.BudgetSummary
 import com.example.domain.repository.BudgetRepository
+import com.example.domain.usecase.BudgetSummary
 import com.example.domain.usecase.GetBudgetSummaryUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,10 +21,10 @@ class BudgetViewModel @Inject constructor(
     private val getBudgetSummaryUseCase: GetBudgetSummaryUseCase
 ) : ViewModel() {
 
-    private val _budgetSummary = MutableStateFlow<BudgetSummary?>(null)
-    val budgetSummary: StateFlow<BudgetSummary?> = _budgetSummary.asStateFlow()
+    private val _budgetSummaries = MutableStateFlow<List<BudgetSummary>>(emptyList())
+    val budgetSummaries: StateFlow<List<BudgetSummary>> = _budgetSummaries.asStateFlow()
 
-    private val _isLoading = MutableStateFlow(false)
+    private val _isLoading = MutableStateFlow(true) // Start as true
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     init {
@@ -34,35 +33,60 @@ class BudgetViewModel @Inject constructor(
 
     fun loadBudgets() {
         viewModelScope.launch {
-            _isLoading.value = true
             try {
-                val summary = getBudgetSummaryUseCase.execute()
-                _budgetSummary.value = summary
+                // Collect from the Flow and update loading state after first emission
+                getBudgetSummaryUseCase().collect { summaries ->
+                    _budgetSummaries.value = summaries
+                    _isLoading.value = false // Set to false after first data arrives
+                }
             } catch (e: Exception) {
                 // Handle error
-            } finally {
+                _budgetSummaries.value = emptyList()
                 _isLoading.value = false
             }
         }
     }
 
-    fun createBudget(category: String, amount: Double) {
+    fun createBudget(
+        category: String,
+        amount: Double,
+        alertThreshold: Float = 0.8f // Default to 80% threshold
+    ) {
         viewModelScope.launch {
             val budget = Budget(
                 id = UUID.randomUUID().toString(),
                 category = category,
                 limitAmount = amount,
                 spentAmount = 0.0,
-                period = BudgetPeriod.MONTHLY
+                period = BudgetPeriod.MONTHLY,
+                alertThreshold = alertThreshold,
+                isActive = true,
+                createdAt = System.currentTimeMillis()
             )
             budgetRepository.insertBudget(budget)
-            loadBudgets()
+            // Data will auto-refresh via Flow in loadBudgets()
         }
     }
+
+    fun updateBudget(budget: Budget) {
+        viewModelScope.launch {
+            budgetRepository.updateBudget(budget)
+            // Data will auto-refresh via Flow in loadBudgets()
+        }
+    }
+
     fun deleteBudget(budget: Budget) {
         viewModelScope.launch {
             budgetRepository.deleteBudget(budget)
-            loadBudgets() // Refresh
+            // Data will auto-refresh via Flow in loadBudgets()
+        }
+    }
+
+    fun toggleBudgetActive(budget: Budget) {
+        viewModelScope.launch {
+            val updated = budget.copy(isActive = !budget.isActive)
+            budgetRepository.updateBudget(updated)
+            // Data will auto-refresh via Flow in loadBudgets()
         }
     }
 }

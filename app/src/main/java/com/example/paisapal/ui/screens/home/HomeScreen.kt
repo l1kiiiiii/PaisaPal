@@ -1,17 +1,40 @@
 package com.example.paisapal.ui.screens.home
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -22,89 +45,120 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.domain.model.Transaction
 import com.example.domain.model.TransactionType
 import com.example.paisapal.ui.components.CompactTopBar
-import com.example.paisapal.ui.theme.*
+import com.example.paisapal.ui.theme.BackgroundDark
+import com.example.paisapal.ui.theme.CreditGreen
+import com.example.paisapal.ui.theme.DebitRed
+import com.example.paisapal.ui.theme.PrimaryBlue
+import com.example.paisapal.ui.theme.PrimaryGreen
+import com.example.paisapal.ui.theme.SurfaceDark
+import com.example.paisapal.ui.theme.SurfaceLighter
+import com.example.paisapal.ui.theme.TextGray
+import com.example.paisapal.ui.theme.TextWhite
+import com.example.paisapal.ui.theme.WarningOrange
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
-    onImportClick: () -> Unit = {},
+    // onImportClick: () -> Unit = {},
     onTransactionClick: (Transaction) -> Unit = {},
     onReviewClick: () -> Unit = {},
     onQuickAddClick: () -> Unit = {}
 ) {
-    val homeFeed by viewModel.homeFeed.collectAsState()
+    val smartFeedItems by viewModel.smartFeedItems.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
 
     Scaffold(
-        containerColor = Color.Black,
-        topBar = {
-            CompactTopBar("PaisaPal")
-        },
+        topBar = { CompactTopBar("Home", onSettingsClick = {}) },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onQuickAddClick,
-                containerColor = PrimaryBlue,
-                contentColor = Color.White
+                containerColor = PrimaryGreen
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Quick Add")
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Quick Add",
+                    tint = Color.White
+                )
             }
         }
     ) { paddingValues ->
-        if (homeFeed.isEmpty()) {
-            EmptyStateWithImport(
-                modifier = Modifier.padding(paddingValues),
-                onImportClick = onImportClick
-            )
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(BackgroundDark)
-                    .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(homeFeed, key = { item ->
-                    when (item) {
-                        is HomeFeedItem.OverviewCard -> "overview"
-                        is HomeFeedItem.TransactionItem -> item.transaction.id
-                        is HomeFeedItem.BudgetAlert -> "budget_${item.category}"
-                        is HomeFeedItem.ReviewPrompt -> "review_${item.transactionId}"
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(BackgroundDark)
+                .padding(paddingValues)
+        ) {
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = PrimaryGreen)
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(smartFeedItems) { item ->
+                        when (item) {
+                            is SmartFeedItem.OverviewCard -> {
+                                OverviewCard(
+                                    totalSpent = item.totalSpent,
+                                    budgetStatus = item.budgetStatus,
+                                    budgetProgress = item.budgetProgress
+                                )
+                            }
+                            is SmartFeedItem.NeedsReviewBanner -> {
+                                NeedsReviewBanner(
+                                    count = item.count,
+                                    onClick = onReviewClick
+                                )
+                            }
+                            is SmartFeedItem.TransactionSection -> {
+                                TransactionListSection(
+                                    transactions = item.transactions,
+                                    onTransactionClick = onTransactionClick
+                                )
+                            }
+                            is SmartFeedItem.BudgetAlert -> {
+                                BudgetAlertCard(
+                                    category = item.category,
+                                    overage = item.overage
+                                )
+                            }
+                        }
                     }
-                }) { feedItem ->
-                    when (feedItem) {
-                        is HomeFeedItem.OverviewCard -> {
-                            OverviewCardComposable(
-                                item = feedItem,
-                                onReviewClick = onReviewClick
+
+                    // Import SMS Button
+                    /*
+                    item {
+
+                        Button(
+                            onClick = onImportClick,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = PrimaryBlue
                             )
-                        }
-                        is HomeFeedItem.TransactionItem -> {
-                            TransactionListItem(
-                                transaction = feedItem.transaction,
-                                onClick = { onTransactionClick(feedItem.transaction) }
-                            )
-                        }
-                        is HomeFeedItem.BudgetAlert -> {
-                            BudgetAlertCard(item = feedItem)
-                        }
-                        is HomeFeedItem.ReviewPrompt -> {
-                            ReviewPromptCard(
-                                item = feedItem,
-                                onReviewClick = onReviewClick
-                            )
+                        ) {
+                            Text("Import SMS History")
                         }
                     }
+                     */
                 }
             }
         }
     }
 }
 
+// ===== Composable Functions =====
+
 @Composable
-private fun OverviewCardComposable(
-    item: HomeFeedItem.OverviewCard,
-    onReviewClick: () -> Unit
+private fun OverviewCard(
+    totalSpent: Double,
+    budgetStatus: String,
+    budgetProgress: Float
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -118,120 +172,76 @@ private fun OverviewCardComposable(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "November Overview",
+                text = "This Month",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = TextWhite
             )
 
-            // Total Spent
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("Total Spent:", color = TextGray, fontSize = 14.sp)
                 Text(
-                    "₹${String.format("%.2f", item.totalSpent)}",
+                    "₹${String.format("%.2f", totalSpent)}",
                     fontWeight = FontWeight.Bold,
                     color = DebitRed,
-                    fontSize = 18.sp
+                    fontSize = 20.sp
                 )
             }
 
-            // Needs Review (Clickable)
-            if (item.needsReview > 0) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onReviewClick() }
-                        .padding(vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("Needs Review:", color = TextGray, fontSize = 14.sp)
-                    Text(
-                        "${item.needsReview} transactions →",
-                        fontWeight = FontWeight.Bold,
-                        color = WarningOrange,
-                        fontSize = 14.sp
-                    )
-                }
-            }
+            if (budgetProgress > 0) {
+                HorizontalDivider(thickness = 1.dp, color = SurfaceLighter)
 
-            // Budget Progress
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("${item.budgetStatus} Budget:", color = TextGray, fontSize = 14.sp)
-                    Text(
-                        "${(item.budgetProgress * 100).toInt()}%",
-                        fontWeight = FontWeight.Bold,
-                        color = if (item.budgetProgress > 0.9f) DebitRed else PrimaryGreen,
-                        fontSize = 14.sp
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("$budgetStatus:", color = TextGray, fontSize = 14.sp)
+                        Text(
+                            "${(budgetProgress * 100).toInt()}%",
+                            fontWeight = FontWeight.Bold,
+                            color = when {
+                                budgetProgress > 1.0f -> DebitRed
+                                budgetProgress > 0.8f -> WarningOrange
+                                else -> PrimaryGreen
+                            },
+                            fontSize = 14.sp
+                        )
+                    }
+
+                    LinearProgressIndicator(
+                        progress = { budgetProgress.coerceIn(0f, 1f) },
+                        modifier = Modifier.fillMaxWidth().height(8.dp),
+                        color = when {
+                            budgetProgress > 1.0f -> DebitRed
+                            budgetProgress > 0.8f -> WarningOrange
+                            else -> PrimaryGreen
+                        },
+                        trackColor = SurfaceLighter,
                     )
                 }
-                LinearProgressIndicator(
-                    progress = { item.budgetProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp),
-                    color = if (item.budgetProgress > 0.9f) DebitRed else PrimaryGreen,
-                    trackColor = SurfaceLighter,
-                )
             }
         }
     }
 }
 
 @Composable
-private fun BudgetAlertCard(item: HomeFeedItem.BudgetAlert) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = DebitRed.copy(alpha = 0.15f))
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("⚠️", fontSize = 32.sp)
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "Budget Alert!",
-                    fontWeight = FontWeight.Bold,
-                    color = DebitRed,
-                    fontSize = 16.sp
-                )
-                Text(
-                    "You've exceeded your '${item.category}' budget.",
-                    color = TextWhite,
-                    fontSize = 14.sp
-                )
-                Text(
-                    "₹${String.format("%.0f", item.spent)} / ₹${String.format("%.0f", item.limit)}",
-                    color = TextGray,
-                    fontSize = 12.sp
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ReviewPromptCard(
-    item: HomeFeedItem.ReviewPrompt,
-    onReviewClick: () -> Unit
+private fun NeedsReviewBanner(
+    count: Int,
+    onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onReviewClick() },
+            .clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = PrimaryBlue.copy(alpha = 0.15f))
+        colors = CardDefaults.cardColors(
+            containerColor = WarningOrange.copy(alpha = 0.15f)
+        )
     ) {
         Row(
             modifier = Modifier
@@ -240,32 +250,99 @@ private fun ReviewPromptCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("🤔", fontSize = 32.sp)
-            Column(modifier = Modifier.weight(1f)) {
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = WarningOrange.copy(alpha = 0.3f),
+                modifier = Modifier.size(40.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                    Text(text = "⚠️", fontSize = 20.sp)
+                }
+            }
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 Text(
-                    "Help us learn!",
+                    "Needs Review",
                     fontWeight = FontWeight.Bold,
-                    color = PrimaryBlue,
+                    color = TextWhite,
                     fontSize = 16.sp
                 )
                 Text(
-                    "We saw a ₹${String.format("%.2f", item.amount)} payment.",
-                    color = TextWhite,
-                    fontSize = 14.sp
+                    "$count ${if (count == 1) "transaction" else "transactions"} need categorization",
+                    color = TextGray,
+                    fontSize = 13.sp
                 )
-                item.suggestedCategory?.let {
-                    Text(
-                        "Was this '$it'?",
-                        color = TextGray,
-                        fontSize = 12.sp
-                    )
-                }
             }
-            Text(
-                "→",
-                fontSize = 24.sp,
-                color = PrimaryBlue
+
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = "Review",
+                tint = WarningOrange
             )
+        }
+    }
+}
+
+@Composable
+private fun TransactionListSection(
+    transactions: List<Transaction>,
+    onTransactionClick: (Transaction) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Recent Transactions",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = TextWhite
+            )
+            Text(
+                text = "${transactions.size} items",
+                style = MaterialTheme.typography.bodySmall,
+                color = TextGray
+            )
+        }
+
+        transactions.forEach { transaction ->
+            TransactionListItem(
+                transaction = transaction,
+                onClick = { onTransactionClick(transaction) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun BudgetAlertCard(category: String, overage: Double) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = DebitRed.copy(alpha = 0.2f))
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.Warning, contentDescription = null, tint = DebitRed)
+            Column {
+                Text(
+                    text = "Budget Alert: $category",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = TextWhite
+                )
+                Text(
+                    text = "Over by ₹${String.format("%.2f", overage)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextGray
+                )
+            }
         }
     }
 }
@@ -278,16 +355,12 @@ private fun TransactionListItem(
     val isCredit = transaction.type == TransactionType.CREDIT
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = SurfaceDark)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -318,60 +391,6 @@ private fun TransactionListItem(
                 fontWeight = FontWeight.Bold,
                 color = if (isCredit) CreditGreen else DebitRed,
                 fontSize = 16.sp
-            )
-        }
-    }
-}
-
-@Composable
-private fun EmptyStateWithImport(
-    modifier: Modifier = Modifier,
-    onImportClick: () -> Unit = {}
-) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = "📱",
-            fontSize = 64.sp
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = "No Transactions Yet",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = TextWhite,
-            fontSize = 24.sp
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            text = "Get started by importing your existing bank SMS",
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextGray,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Button(
-            onClick = onImportClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreenLight)
-        ) {
-            Text(
-                "Import SMS",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
             )
         }
     }

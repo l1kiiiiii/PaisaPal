@@ -1,63 +1,80 @@
 package com.example.domain.usecase
 
-import com.example.domain.model.*
+import com.example.domain.model.Budget
 import com.example.domain.repository.BudgetRepository
 import com.example.domain.repository.TransactionRepository
-import kotlinx.coroutines.flow.first
-import java.util.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import javax.inject.Inject
 
-class GetBudgetSummaryUseCase(
+data class BudgetSummary(
+    val category: String,
+    val budgetAmount: Double,
+    val spentAmount: Double,
+    val remainingAmount: Double,
+    val progress: Float, // 0.0 to 1.0
+    val isOverBudget: Boolean
+)
+
+class GetBudgetSummaryUseCase @Inject constructor(
     private val budgetRepository: BudgetRepository,
     private val transactionRepository: TransactionRepository
 ) {
 
-    suspend fun execute(): BudgetSummary {
-        val budgets = budgetRepository.getAllActiveBudgets().first()
-        val transactions = transactionRepository.getAllTransactions().first()
+    operator fun invoke(): Flow<List<BudgetSummary>> {
+        return combine(
+            budgetRepository.getAllActiveBudgets(), // Changed from getAllBudgets()
+            transactionRepository.getAllTransactions()
+        ) { budgets, transactions ->
 
-        // Calculate spent amounts per category
-        val categorySpending = calculateCategorySpending(transactions)
+            val currentMonth = getCurrentMonthRange()
 
-        // Update budgets with current spending
-        val updatedBudgets = budgets.map { budget ->
-            val spent = categorySpending[budget.category] ?: 0.0
-            budget.copy(spentAmount = spent)
+            budgets.map { budget ->
+                // Calculate spending for this budget category in current month
+                val spent = transactions
+                    .filter { transaction ->
+                        transaction.category == budget.category &&
+                                transaction.timestamp >= currentMonth.start &&
+                                transaction.timestamp <= currentMonth.end
+                    }
+                    .sumOf { it.amount }
+
+                val remaining = budget.limitAmount - spent // Changed from budget.amount
+                val progress = if (budget.limitAmount > 0) {
+                    (spent / budget.limitAmount).coerceIn(0.0, 1.0).toFloat()
+                } else 0f
+
+                BudgetSummary(
+                    category = budget.category,
+                    budgetAmount = budget.limitAmount, // Changed from budget.amount
+                    spentAmount = spent,
+                    remainingAmount = remaining,
+                    progress = progress,
+                    isOverBudget = spent > budget.limitAmount // Changed from budget.amount
+                )
+            }
         }
-
-        val totalBudget = budgets.sumOf { it.limitAmount }
-        val totalSpent = categorySpending.values.sum()
-        val overBudgetCount = updatedBudgets.count { it.isOverBudget }
-        val nearLimitCount = updatedBudgets.count { it.isNearLimit && !it.isOverBudget }
-
-        return BudgetSummary(
-            totalBudget = totalBudget,
-            totalSpent = totalSpent,
-            categoryBudgets = updatedBudgets,
-            overBudgetCount = overBudgetCount,
-            nearLimitCount = nearLimitCount
-        )
     }
 
-    private fun calculateCategorySpending(transactions: List<Transaction>): Map<String, Double> {
-        val now = System.currentTimeMillis()
-        val monthStart = getMonthStart(now)
+    private fun getCurrentMonthRange(): MonthRange {
+        val calendar = java.util.Calendar.getInstance()
 
-        return transactions
-            .filter { it.type == TransactionType.DEBIT }
-            .filter { it.timestamp >= monthStart }
-            .filter { it.category != null }
-            .groupBy { it.category!! }
-            .mapValues { (_, txns) -> txns.sumOf { it.amount } }
+        // Start of month
+        calendar.set(java.util.Calendar.DAY_OF_MONTH, 1)
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        calendar.set(java.util.Calendar.MINUTE, 0)
+        calendar.set(java.util.Calendar.SECOND, 0)
+        val start = calendar.timeInMillis
+
+        // End of month
+        calendar.set(java.util.Calendar.DAY_OF_MONTH, calendar.getActualMaximum(java.util.Calendar.DAY_OF_MONTH))
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 23)
+        calendar.set(java.util.Calendar.MINUTE, 59)
+        calendar.set(java.util.Calendar.SECOND, 59)
+        val end = calendar.timeInMillis
+
+        return MonthRange(start, end)
     }
 
-    private fun getMonthStart(timestamp: Long): Long {
-        val calendar = Calendar.getInstance()
-        calendar.timeInMillis = timestamp
-        calendar.set(Calendar.DAY_OF_MONTH, 1)
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        return calendar.timeInMillis
-    }
+    private data class MonthRange(val start: Long, val end: Long)
 }

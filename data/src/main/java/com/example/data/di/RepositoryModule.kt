@@ -1,30 +1,44 @@
 package com.example.data.di
 
-
-import com.example.data.repository.NotificationRepositoryImpl
-import com.example.data.repository.TransactionRepositoryImpl
-import com.example.data.repository.SmsRepositoryImpl
-import com.example.domain.repository.NotificationRepository
-import com.example.domain.repository.TransactionRepository
-import com.example.domain.repository.SmsRepository
+import com.example.data.repository.*
+import com.example.domain.repository.*
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RepositoryModule {
 
     @Binds
-    abstract fun bindTransactionRepository(impl: TransactionRepositoryImpl): TransactionRepository
+    @Singleton
+    abstract fun bindTransactionRepository(
+        impl: TransactionRepositoryImpl
+    ): TransactionRepository
 
     @Binds
-    abstract fun bindSmsRepository(impl: SmsRepositoryImpl): SmsRepository
+    @Singleton
+    abstract fun bindSmsRepository(
+        impl: SmsRepositoryImpl
+    ): SmsRepository
 
     @Binds
+    @Singleton
+    abstract fun bindBudgetRepository(
+        impl: BudgetRepositoryImpl
+    ): BudgetRepository
+
+    @Binds
+    @Singleton
     abstract fun bindNotificationRepository(
         impl: NotificationRepositoryImpl
     ): NotificationRepository
-}
 
+    @Binds
+    @Singleton
+    abstract fun bindSavedPlaceRepository(
+        impl: SavedPlaceRepositoryImpl
+    ): SavedPlaceRepository
+}

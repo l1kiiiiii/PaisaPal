@@ -6,7 +6,7 @@ data class Budget(
     val limitAmount: Double,
     val spentAmount: Double,
     val period: BudgetPeriod,
-    val alertThreshold: Int = 80, // Alert at 80% usage
+    val alertThreshold: Float,
     val isActive: Boolean = true,
     val createdAt: Long = System.currentTimeMillis()
 ) {

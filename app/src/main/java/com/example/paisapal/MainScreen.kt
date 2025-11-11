@@ -24,7 +24,6 @@ import com.example.paisapal.ui.navigation.bottomNavItems
 import com.example.paisapal.ui.screens.budget.BudgetScreen
 import com.example.paisapal.ui.screens.detail.TransactionDetailScreen
 import com.example.paisapal.ui.screens.home.HomeScreen
-import com.example.paisapal.ui.screens.imports.ImportSmsScreen
 import com.example.paisapal.ui.screens.insights.InsightsScreen
 import com.example.paisapal.ui.screens.review.ReviewScreen
 import com.example.paisapal.ui.screens.settings.SettingsScreen
@@ -69,9 +68,12 @@ fun MainScreen() {
             composable("home") {
                 currentRoute = "home"
                 HomeScreen(
+                    /*
                     onImportClick = {
                         navController.navigate("import_sms")
                     },
+
+                     */
                     onTransactionClick = { transaction ->
                         navController.navigate("transaction_detail/${transaction.id}")
                     },
@@ -124,6 +126,7 @@ fun MainScreen() {
                     }
                 }
             }
+            /*
             composable("import_sms") {
                 currentRoute = "import_sms"
                 ImportSmsScreen(
@@ -137,6 +140,8 @@ fun MainScreen() {
                     }
                 )
             }
+
+             */
         }
     }
 }

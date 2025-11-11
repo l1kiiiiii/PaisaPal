@@ -1,34 +1,34 @@
 package com.example.domain.usecase
 
-import com.example.domain.model.Budget
-import com.example.domain.model.BudgetSummary
-import com.example.domain.usecase.GetBudgetSummaryUseCase
+import kotlinx.coroutines.flow.first
+import javax.inject.Inject
 
-class CheckBudgetAlertsUseCase(
+class CheckBudgetAlertsUseCase @Inject constructor(
     private val getBudgetSummaryUseCase: GetBudgetSummaryUseCase
 ) {
 
     suspend fun execute(): List<BudgetAlert> {
-        val summary = getBudgetSummaryUseCase.execute()
+        // Get the first emission from the Flow
+        val budgetSummaries = getBudgetSummaryUseCase().first()
         val alerts = mutableListOf<BudgetAlert>()
 
-        summary.categoryBudgets.forEach { budget ->
+        budgetSummaries.forEach { budget ->
             when {
                 budget.isOverBudget -> {
                     alerts.add(
                         BudgetAlert(
                             category = budget.category,
                             type = AlertType.OVER_BUDGET,
-                            message = "You've exceeded your ${budget.category} budget by ₹${String.format("%.0f", budget.spentAmount - budget.limitAmount)}"
+                            message = "You've exceeded your ${budget.category} budget by ₹${String.format("%.0f", budget.spentAmount - budget.budgetAmount)}"
                         )
                     )
                 }
-                budget.isNearLimit -> {
+                budget.progress >= 0.8f && !budget.isOverBudget -> {
                     alerts.add(
                         BudgetAlert(
                             category = budget.category,
                             type = AlertType.NEAR_LIMIT,
-                            message = "${budget.category}: ${String.format("%.0f", budget.usagePercentage)}% of budget used"
+                            message = "${budget.category}: ${String.format("%.0f", budget.progress * 100)}% of budget used"
                         )
                     )
                 }
