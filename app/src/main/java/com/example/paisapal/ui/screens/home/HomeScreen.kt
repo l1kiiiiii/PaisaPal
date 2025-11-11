@@ -59,7 +59,7 @@ import com.example.paisapal.ui.theme.WarningOrange
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
-    onImportClick: () -> Unit = {},
+    // onImportClick: () -> Unit = {},
     onTransactionClick: (Transaction) -> Unit = {},
     onReviewClick: () -> Unit = {},
     onQuickAddClick: () -> Unit = {}
@@ -132,7 +132,9 @@ fun HomeScreen(
                     }
 
                     // Import SMS Button
+                    /*
                     item {
+
                         Button(
                             onClick = onImportClick,
                             modifier = Modifier.fillMaxWidth(),
@@ -143,6 +145,7 @@ fun HomeScreen(
                             Text("Import SMS History")
                         }
                     }
+                     */
                 }
             }
         }

@@ -12,6 +12,7 @@ composeMaterialIcons = "1.7.0"
 hilt = "2.51"
 hiltNavigationCompose = "1.2.0"
 kotlinxCoroutinesCore = "1.8.1"
+playServicesLocation = "21.0.1"
 room = "2.6.1"
 ksp = "2.0.0-1.0.21"
 lifecycleViewmodelCompose = "2.8.2"
@@ -22,6 +23,7 @@ workRuntimeKtx = "2.9.0"
 junit = "4.13.2"
 androidxTestJunit = "1.1.5"
 androidxTestEspresso = "3.5.1"
+playServicesLocationVersion = "21.3.0"
 
 [libraries]
 androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
@@ -49,6 +51,7 @@ hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-com
 
 javax-inject = { module = "javax.inject:javax.inject", version.ref = "javaxInject" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutinesCore" }
+play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
@@ -59,6 +62,7 @@ vico-compose-m3 = { module = "com.patrykandpatrick.vico:compose-m3", version.ref
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestJunit" }
 androidx-test-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "androidxTestEspresso" }
+gms-play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocationVersion" }
 
 
 

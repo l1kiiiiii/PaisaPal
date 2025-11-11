@@ -8,4 +8,5 @@ interface SavedPlaceRepository {
     fun getAllPlaces(): Flow<List<SavedPlace>>
     suspend fun insert(place: SavedPlace)
     suspend fun delete(place: SavedPlace)
+    suspend fun findNearbyPlace(latitude: Double, longitude: Double, radiusMeters: Double): SavedPlace?
 }

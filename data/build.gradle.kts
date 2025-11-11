@@ -27,6 +27,7 @@ dependencies {
     implementation(project(":domain"))
 
     implementation(libs.hilt.android)
+    implementation(libs.gms.play.services.location)
     ksp(libs.hilt.compiler)
 
     implementation(libs.room.runtime)
