@@ -22,7 +22,6 @@ android {
         jvmTarget = "17"
     }
 }
-
 dependencies {
     implementation(project(":domain"))
 
@@ -36,11 +35,17 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
 
-    // Instrumented Tests (Android tests)
+    // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)
     androidTestImplementation(libs.compose.ui.tooling)
 
     implementation(libs.javax.inject)
+
+    implementation(libs.android.database.sqlcipher)
+
+    implementation(libs.androidx.sqlite.ktx)
+    implementation(libs.androidx.security.crypto)
 }
+

@@ -1,16 +1,16 @@
 package com.example.paisapal.receiver
 
+import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.provider.Telephony
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.example.domain.engine.SmsProcessingEngine
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -19,26 +19,75 @@ class SmsReceiver : BroadcastReceiver() {
     @Inject
     lateinit var smsProcessingEngine: SmsProcessingEngine
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
     override fun onReceive(context: Context?, intent: Intent?) {
-        if (intent?.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
+        // Null safety checks
+        if (context == null || intent == null) {
+            Log.w(TAG, "Context or Intent is null")
+            return
+        }
 
-        val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent)
+        // Verify action
+        if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
+            Log.w(TAG, "Invalid action: ${intent.action}")
+            return
+        }
 
-        messages.forEach { message ->
-            val sender = message.displayOriginatingAddress
-            val body = message.messageBody
-            val timestamp = message.timestampMillis
+        // Check SMS permission
+        if (ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.RECEIVE_SMS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            Log.e(TAG, "SMS permission not granted")
+            return
+        }
 
-            Log.d(TAG, "SMS Received - Sender: $sender")
+        //  Use goAsync() to extend receiver lifetime
+        val pendingResult: PendingResult = goAsync()
 
-            scope.launch {
+        // Extract messages
+        val messages = try {
+            Telephony.Sms.Intents.getMessagesFromIntent(intent)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error extracting messages", e)
+            pendingResult.finish() // Always cleanup
+            return
+        }
+
+        if (messages == null || messages.isEmpty()) {
+            Log.w(TAG, "No messages found")
+            pendingResult.finish()
+            return
+        }
+
+        //  Process SMS in background with proper cleanup
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                messages.forEach { message ->
+                    val sender = message.displayOriginatingAddress
+                    val body = message.messageBody
+                    val timestamp = message.timestampMillis
+
+                    Log.d(TAG, "Processing SMS from: $sender")
+
+                    try {
+                        // Process the SMS
+                        smsProcessingEngine.processIncomingSms(sender, body, timestamp)
+                        Log.d(TAG, " SMS processed successfully")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "❌ Error processing SMS from $sender", e)
+                        // Continue processing other messages
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Fatal error in SMS processing", e)
+            } finally {
+                //  ALWAYS release the wakelock
                 try {
-                    smsProcessingEngine.processIncomingSms(body, sender, timestamp)
-                    Log.d(TAG, "SMS Processed Successfully")
+                    pendingResult.finish()
+                    Log.d(TAG, "PendingResult finished")
                 } catch (e: Exception) {
-                    Log.e(TAG, "Error processing SMS", e)
+                    Log.e(TAG, "Error finishing pendingResult", e)
                 }
             }
         }

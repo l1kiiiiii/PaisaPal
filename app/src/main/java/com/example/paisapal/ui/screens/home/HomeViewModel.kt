@@ -4,9 +4,10 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.domain.model.Transaction
+import com.example.domain.model.TransactionType
 import com.example.domain.repository.TransactionRepository
-import com.example.domain.usecase.GetBudgetSummaryUseCase
 import com.example.domain.usecase.BudgetSummary
+import com.example.domain.usecase.GetBudgetSummaryUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -24,8 +25,11 @@ class HomeViewModel @Inject constructor(
     private val _smartFeedItems = MutableStateFlow<List<SmartFeedItem>>(emptyList())
     val smartFeedItems: StateFlow<List<SmartFeedItem>> = _smartFeedItems.asStateFlow()
 
-    private val _isLoading = MutableStateFlow(true) // Start as true
+    private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
 
     init {
         loadData()
@@ -34,19 +38,34 @@ class HomeViewModel @Inject constructor(
     private fun loadData() {
         viewModelScope.launch {
             try {
-                // Combine both flows and update UI when either changes
+                _isLoading.value = true
+                _error.value = null
+
                 combine(
                     repository.getAllTransactions(),
                     getBudgetSummaryUseCase()
                 ) { transactions, budgetSummaries ->
-                    _transactions.value = transactions
-                    buildSmartFeed(transactions, budgetSummaries)
-                }.collect { smartFeed ->
-                    _smartFeedItems.value = smartFeed
-                    _isLoading.value = false // Set to false after first emission
+                    Pair(transactions, budgetSummaries)
                 }
+                    .onStart {
+                        _isLoading.value = true
+                    }
+                    .catch { e ->
+                        Log.e(TAG, "Error loading data", e)
+                        _error.value = "Failed to load data: ${e.message}"
+                        _isLoading.value = false
+                    }
+                    .collect { (transactions, budgetSummaries) ->
+                        _transactions.value = transactions
+                        _smartFeedItems.value = buildSmartFeed(transactions, budgetSummaries)
+
+                        if (_isLoading.value) {
+                            _isLoading.value = false
+                        }
+                    }
             } catch (e: Exception) {
-                Log.e("HomeViewModel", "Error loading data", e)
+                Log.e(TAG, "Fatal error in loadData", e)
+                _error.value = "An unexpected error occurred"
                 _isLoading.value = false
             }
         }
@@ -55,14 +74,15 @@ class HomeViewModel @Inject constructor(
     fun addManualTransaction(transaction: Transaction) {
         viewModelScope.launch {
             try {
-                repository.insertTransaction(transaction)
-                // Data will auto-refresh via Flow
+                repository.insert(transaction)
             } catch (e: Exception) {
-                Log.e("HomeViewModel", "Error adding transaction", e)
+                Log.e(TAG, "Error adding transaction", e)
+                _error.value = "Failed to add transaction"
             }
         }
     }
 
+    // FIXED: Use BudgetSummary from usecase package
     private fun buildSmartFeed(
         transactions: List<Transaction>,
         budgetSummaries: List<BudgetSummary>
@@ -78,7 +98,7 @@ class HomeViewModel @Inject constructor(
             feedItems.add(
                 SmartFeedItem.OverviewCard(
                     totalSpent = transactions
-                        .filter { it.type == com.example.domain.model.TransactionType.DEBIT }
+                        .filter { it.type == TransactionType.DEBIT }
                         .sumOf { it.amount },
                     budgetStatus = criticalBudget.category,
                     budgetProgress = criticalBudget.progress
@@ -88,7 +108,7 @@ class HomeViewModel @Inject constructor(
             feedItems.add(
                 SmartFeedItem.OverviewCard(
                     totalSpent = transactions
-                        .filter { it.type == com.example.domain.model.TransactionType.DEBIT }
+                        .filter { it.type == TransactionType.DEBIT }
                         .sumOf { it.amount },
                     budgetStatus = "All categories on track",
                     budgetProgress = 0f
@@ -121,7 +141,8 @@ class HomeViewModel @Inject constructor(
             feedItems.add(
                 SmartFeedItem.BudgetAlert(
                     category = overBudgetCategories.first().category,
-                    overage = overBudgetCategories.first().spentAmount - overBudgetCategories.first().budgetAmount
+                    overage = overBudgetCategories.first().spentAmount -
+                            overBudgetCategories.first().budgetAmount
                 )
             )
         }
@@ -130,7 +151,15 @@ class HomeViewModel @Inject constructor(
     }
 
     fun refreshData() {
-        loadData()
+        _isLoading.value = true
+    }
+
+    fun clearError() {
+        _error.value = null
+    }
+
+    companion object {
+        private const val TAG = "HomeViewModel"
     }
 }
 
@@ -143,9 +172,7 @@ sealed class SmartFeedItem {
     ) : SmartFeedItem()
 
     data class NeedsReviewBanner(val count: Int) : SmartFeedItem()
-
     data class TransactionSection(val transactions: List<Transaction>) : SmartFeedItem()
-
     data class BudgetAlert(
         val category: String,
         val overage: Double

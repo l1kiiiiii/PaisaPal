@@ -68,7 +68,7 @@ class ImportHistoricalSmsUseCase @Inject constructor(
 
                     if (!exists) {
                         // Save the transaction
-                        transactionRepository.insertTransaction(transaction)
+                        transactionRepository.insert(transaction)
                         importedCount++
 
                         if (transaction.category != null) {

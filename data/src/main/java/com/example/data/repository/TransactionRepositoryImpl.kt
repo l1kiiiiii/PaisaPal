@@ -29,10 +29,6 @@ class TransactionRepositoryImpl @Inject constructor(
         dao.insert(transaction.toEntity())
     }
 
-    override suspend fun insertTransaction(transaction: Transaction) {
-        dao.insertTransaction(transaction.toEntity())
-    }
-
     override suspend fun insertMultiple(transactions: List<Transaction>) {
         dao.insertMultiple(transactions.map { it.toEntity() })
     }
@@ -71,5 +67,9 @@ class TransactionRepositoryImpl @Inject constructor(
 
     override suspend fun getTransactionById(transactionId: String): Transaction? {
         return dao.getTransactionById(transactionId)?.toDomain()
+    }
+
+    override fun getTransactionByIdFlow(transactionId: String): Flow<Transaction?> {
+        return dao.getTransactionByIdFlow(transactionId).map { it?.toDomain() }
     }
 }
