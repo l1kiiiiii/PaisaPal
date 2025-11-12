@@ -46,7 +46,7 @@ class SmsProcessingEngine(
                 merchantDisplayName = parsedData.merchantRaw ?: "Unknown",
                 needsReview = false
             )
-            transactionRepository.insertTransaction(transaction)
+            transactionRepository.insert(transaction)
             return ProcessingResult.Success(transaction, "Direct Match")
         }
 
@@ -58,12 +58,12 @@ class SmsProcessingEngine(
                 merchantDisplayName = contextMatch.merchantName,
                 needsReview = false
             )
-            transactionRepository.insertTransaction(transaction)
+            transactionRepository.insert(transaction)
             return ProcessingResult.Success(transaction, "Context Match")
         }
 
         // Stage 5: Needs review
-        transactionRepository.insertTransaction(transaction)
+        transactionRepository.insert(transaction)
         return ProcessingResult.NeedsReview(transaction)
     }
 

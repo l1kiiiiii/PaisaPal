@@ -1,5 +1,6 @@
 [versions]
-agp = "8.13.0"
+agp = "8.13.1"
+androidDatabaseSqlcipher = "4.5.4"
 composeBom = "2024.06.00"
 composeM3 = "1.13.1"
 composeVersion = "1.13.1"
@@ -18,6 +19,8 @@ ksp = "2.0.0-1.0.21"
 lifecycleViewmodelCompose = "2.8.2"
 coreKtx = "1.13.1"
 activityCompose = "1.9.0"
+securityCrypto = "1.1.0-alpha06"
+sqliteKtx = "2.4.0"
 workRuntimeKtx = "2.9.0"
 
 junit = "4.13.2"
@@ -26,6 +29,7 @@ androidxTestEspresso = "3.5.1"
 playServicesLocationVersion = "21.3.0"
 
 [libraries]
+android-database-sqlcipher = { module = "net.zetetic:android-database-sqlcipher", version.ref = "androidDatabaseSqlcipher" }
 androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-hilt-compiler = { module = "androidx.hilt:hilt-compiler", version.ref = "hiltNavigationCompose" }
@@ -33,6 +37,8 @@ androidx-hilt-work = { module = "androidx.hilt:hilt-work", version.ref = "hiltNa
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleViewmodelCompose" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 
+androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCrypto" }
+androidx-sqlite-ktx = { module = "androidx.sqlite:sqlite-ktx", version.ref = "sqliteKtx" }
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workRuntimeKtx" }
 compose = { module = "com.patrykandpatrick.vico:compose", version.ref = "composeVersion" }
 compose-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "compose" }
