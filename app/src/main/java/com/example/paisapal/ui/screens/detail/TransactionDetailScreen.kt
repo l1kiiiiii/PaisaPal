@@ -29,6 +29,7 @@ import java.util.*
 fun TransactionDetailScreen(
     transactionId: String,
     onBackClick: () -> Unit,
+    onCategorizeClick: () -> Unit = {},  // ✅ ADD THIS
     viewModel: TransactionDetailViewModel = hiltViewModel()
 ) {
     val transaction by viewModel.transaction.collectAsState()
@@ -39,6 +40,9 @@ fun TransactionDetailScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showCategoryDialog by remember { mutableStateOf(false) }
     var showSmsDialog by remember { mutableStateOf(false) }
+
+    // ✅ REMOVED: navController access - not available here
+    // This will be handled in MainScreen navigation
 
     LaunchedEffect(transactionId) {
         viewModel.loadTransaction(transactionId)
@@ -56,7 +60,6 @@ fun TransactionDetailScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            // ✅ CUSTOM TOP BAR WITH ACTIONS
             CenterAlignedTopAppBar(
                 title = {
                     Text(
@@ -133,7 +136,8 @@ fun TransactionDetailScreen(
                     TransactionDetailContent(
                         transaction = transaction!!,
                         onCategoryClick = { showCategoryDialog = true },
-                        onViewSmsClick = { showSmsDialog = true }
+                        onViewSmsClick = { showSmsDialog = true },
+                        onEditCategoryClick = onCategorizeClick  // ✅ PASS IT
                     )
                 }
             }
@@ -178,7 +182,8 @@ fun TransactionDetailScreen(
 private fun TransactionDetailContent(
     transaction: Transaction,
     onCategoryClick: () -> Unit,
-    onViewSmsClick: () -> Unit
+    onViewSmsClick: () -> Unit,
+    onEditCategoryClick: () -> Unit  // ✅ ADD THIS
 ) {
     Column(
         modifier = Modifier
@@ -187,16 +192,13 @@ private fun TransactionDetailContent(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Amount Card
         AmountCard(transaction)
-
-        // Details Card
-        DetailsCard(transaction, onCategoryClick)
-
-        // SMS Card
+        DetailsCard(
+            transaction = transaction,
+            onCategoryClick = onCategoryClick,
+            onEditCategoryClick = onEditCategoryClick  // ✅ PASS IT
+        )
         SmsCard(transaction, onViewSmsClick)
-
-        // Metadata Card
         MetadataCard(transaction)
     }
 }
@@ -239,27 +241,48 @@ private fun AmountCard(transaction: Transaction) {
 }
 
 @Composable
-private fun DetailsCard(transaction: Transaction, onCategoryClick: () -> Unit) {
+private fun DetailsCard(
+    transaction: Transaction,
+    onCategoryClick: () -> Unit,
+    onEditCategoryClick: () -> Unit  // ✅ ADD THIS
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = SurfaceDark),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Text(
-                text = "Details",
-                color = TextWhite,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Details",
+                    color = TextWhite,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                // ✅ Button to categorize screen
+                TextButton(onClick = onEditCategoryClick) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = null,
+                            tint = PrimaryGreen,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text("Edit", color = PrimaryGreen, fontSize = 14.sp)
+                    }
+                }
+            }
             Spacer(modifier = Modifier.height(16.dp))
 
             DetailRow("Merchant", transaction.merchantDisplayName ?: "Unknown")
-            DetailRow("Category", transaction.category ?: "Uncategorized") {
-                IconButton(onClick = onCategoryClick) {
-                    Icon(Icons.Default.Edit, "Edit", tint = PrimaryGreen, modifier = Modifier.size(20.dp))
-                }
-            }
+            DetailRow("Category", transaction.category ?: "Uncategorized")
             transaction.upiVpa?.let {
                 DetailRow("UPI ID", it)
             }

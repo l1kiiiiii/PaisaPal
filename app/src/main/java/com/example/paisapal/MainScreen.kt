@@ -14,6 +14,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.paisapal.ui.navigation.bottomNavItems
 import com.example.paisapal.ui.screens.budget.BudgetScreen
+import com.example.paisapal.ui.screens.categorize.CategorizeScreen  //  ADD THIS
 import com.example.paisapal.ui.screens.detail.TransactionDetailScreen
 import com.example.paisapal.ui.screens.home.HomeScreen
 import com.example.paisapal.ui.screens.insights.InsightsScreen
@@ -24,32 +25,26 @@ import com.example.paisapal.ui.theme.PrimaryBlue
 @Composable
 fun MainScreen() {
     val navController = rememberNavController()
-
-    // ✅ IMPROVED: Track current route via NavBackStackEntry
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
     // Routes without bottom bar
     val navWithoutBottomBar = listOf(
         "import_sms",
-        "transaction_detail/{transactionId}",  // ✅ FIXED: Full route pattern
-        "categorize"
+        "transaction_detail/{transactionId}",
+        "categorize/{transactionId}"  //  ADD THIS
     )
 
     val showBottomBar = navWithoutBottomBar.none { route ->
         currentRoute?.startsWith(route.substringBefore("{")) == true
     }
 
-    // ✅ ADD: Handle system back button
     BackHandler(enabled = currentRoute != "home") {
         if (currentRoute in listOf("review", "budget", "insights", "settings")) {
-            // From bottom nav screen -> go to home
             navController.navigate("home") {
                 popUpTo("home") { inclusive = true }
-                launchSingleTop = true
             }
         } else {
-            // Default back behavior
             navController.popBackStack()
         }
     }
@@ -62,7 +57,6 @@ fun MainScreen() {
                     currentRoute = currentRoute ?: "home",
                     onNavigate = { route ->
                         navController.navigate(route) {
-                            // ✅ FIXED: Proper back stack management
                             popUpTo(navController.graph.startDestinationId) {
                                 saveState = true
                             }
@@ -108,7 +102,7 @@ fun MainScreen() {
                 SettingsScreen()
             }
 
-            // ===== DETAIL SCREENS (WITH PROPER BACK BUTTON) =====
+            // ===== DETAIL SCREENS =====
 
             composable(
                 route = "transaction_detail/{transactionId}",
@@ -126,10 +120,13 @@ fun MainScreen() {
                         transactionId = transactionId,
                         onBackClick = {
                             navController.popBackStack()
+                        },
+                        //   Navigate to categorize screen
+                        onCategorizeClick = {
+                            navController.navigate("categorize/$transactionId")
                         }
                     )
                 } else {
-                    // Invalid ID - go back to home
                     LaunchedEffect(Unit) {
                         navController.navigate("home") {
                             popUpTo("home") { inclusive = true }
@@ -138,24 +135,38 @@ fun MainScreen() {
                 }
             }
 
-            // ===== OPTIONAL: IMPORT SMS SCREEN =====
-
-            // Uncomment when ImportSmsScreen is ready
-            /*
-            composable("import_sms") {
-                ImportSmsScreen(
-                    onBackClick = {
-                        navController.popBackStack()
-                    },
-                    onImportComplete = {
-                        navController.navigate("home") {
-                            popUpTo("home") { inclusive = true }
-                            launchSingleTop = true
-                        }
+            //   Categorize Screen Route
+            composable(
+                route = "categorize/{transactionId}",
+                arguments = listOf(
+                    navArgument("transactionId") {
+                        type = NavType.StringType
+                        nullable = false
                     }
                 )
+            ) { backStackEntry ->
+                val transactionId = backStackEntry.arguments?.getString("transactionId")
+
+                if (transactionId != null) {
+                    CategorizeScreen(
+                        transactionId = transactionId,
+                        onBackClick = {
+                            navController.popBackStack()
+                        },
+                        onCategorizeComplete = { category ->
+                            // Return to detail screen with success
+                            navController.previousBackStackEntry
+                                ?.savedStateHandle
+                                ?.set("categorized", category)
+                            navController.popBackStack()
+                        }
+                    )
+                } else {
+                    LaunchedEffect(Unit) {
+                        navController.popBackStack()
+                    }
+                }
             }
-            */
         }
     }
 }
