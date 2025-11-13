@@ -70,19 +70,17 @@ class HomeViewModel @Inject constructor(
             }
         }
     }
-
     fun addManualTransaction(transaction: Transaction) {
         viewModelScope.launch {
             try {
                 repository.insert(transaction)
+                // Data will auto-refresh via Flow
             } catch (e: Exception) {
                 Log.e(TAG, "Error adding transaction", e)
                 _error.value = "Failed to add transaction"
             }
         }
     }
-
-    // FIXED: Use BudgetSummary from usecase package
     private fun buildSmartFeed(
         transactions: List<Transaction>,
         budgetSummaries: List<BudgetSummary>

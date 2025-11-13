@@ -79,8 +79,6 @@ fun MainScreen() {
                     },
                     onReviewClick = {
                         navController.navigate("review")
-                    },
-                    onQuickAddClick = {
                     }
                 )
             }
