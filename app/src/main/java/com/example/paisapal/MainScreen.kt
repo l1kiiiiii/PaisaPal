@@ -1,23 +1,15 @@
 package com.example.paisapal
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.paisapal.ui.navigation.bottomNavItems
@@ -32,26 +24,48 @@ import com.example.paisapal.ui.theme.PrimaryBlue
 @Composable
 fun MainScreen() {
     val navController = rememberNavController()
-    var currentRoute by remember { mutableStateOf("home") }
 
+    // ✅ IMPROVED: Track current route via NavBackStackEntry
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    // Routes without bottom bar
     val navWithoutBottomBar = listOf(
         "import_sms",
-        "transaction_detail",
+        "transaction_detail/{transactionId}",  // ✅ FIXED: Full route pattern
         "categorize"
     )
 
-    val showBottomBar = !navWithoutBottomBar.any { currentRoute.startsWith(it) }
+    val showBottomBar = navWithoutBottomBar.none { route ->
+        currentRoute?.startsWith(route.substringBefore("{")) == true
+    }
+
+    // ✅ ADD: Handle system back button
+    BackHandler(enabled = currentRoute != "home") {
+        if (currentRoute in listOf("review", "budget", "insights", "settings")) {
+            // From bottom nav screen -> go to home
+            navController.navigate("home") {
+                popUpTo("home") { inclusive = true }
+                launchSingleTop = true
+            }
+        } else {
+            // Default back behavior
+            navController.popBackStack()
+        }
+    }
 
     Scaffold(
         containerColor = Color.Black,
         bottomBar = {
             if (showBottomBar) {
                 PaisaPalBottomNavigation(
-                    currentRoute = currentRoute,
+                    currentRoute = currentRoute ?: "home",
                     onNavigate = { route ->
-                        currentRoute = route
                         navController.navigate(route) {
-                            popUpTo("home") { saveState = true }
+                            // ✅ FIXED: Proper back stack management
+                            popUpTo(navController.graph.startDestinationId) {
+                                saveState = true
+                            }
                             launchSingleTop = true
                             restoreState = true
                         }
@@ -65,15 +79,10 @@ fun MainScreen() {
             startDestination = "home",
             modifier = Modifier.padding(paddingValues)
         ) {
-            composable("home") {
-                currentRoute = "home"
-                HomeScreen(
-                    /*
-                    onImportClick = {
-                        navController.navigate("import_sms")
-                    },
+            // ===== BOTTOM NAV SCREENS =====
 
-                     */
+            composable("home") {
+                HomeScreen(
                     onTransactionClick = { transaction ->
                         navController.navigate("transaction_detail/${transaction.id}")
                     },
@@ -84,30 +93,32 @@ fun MainScreen() {
             }
 
             composable("review") {
-                currentRoute = "review"
                 ReviewScreen()
             }
 
             composable("budget") {
-                currentRoute = "budget"
                 BudgetScreen()
             }
 
             composable("insights") {
-                currentRoute = "insights"
                 InsightsScreen()
             }
 
             composable("settings") {
-                currentRoute = "settings"
                 SettingsScreen()
             }
 
+            // ===== DETAIL SCREENS (WITH PROPER BACK BUTTON) =====
+
             composable(
-                "transaction_detail/{transactionId}",
-                arguments = listOf(navArgument("transactionId") { type = NavType.StringType })
+                route = "transaction_detail/{transactionId}",
+                arguments = listOf(
+                    navArgument("transactionId") {
+                        type = NavType.StringType
+                        nullable = false
+                    }
+                )
             ) { backStackEntry ->
-                currentRoute = "transaction_detail"
                 val transactionId = backStackEntry.arguments?.getString("transactionId")
 
                 if (transactionId != null) {
@@ -118,15 +129,20 @@ fun MainScreen() {
                         }
                     )
                 } else {
-                    // Handle error - invalid transaction ID
+                    // Invalid ID - go back to home
                     LaunchedEffect(Unit) {
-                        navController.popBackStack()
+                        navController.navigate("home") {
+                            popUpTo("home") { inclusive = true }
+                        }
                     }
                 }
             }
+
+            // ===== OPTIONAL: IMPORT SMS SCREEN =====
+
+            // Uncomment when ImportSmsScreen is ready
             /*
             composable("import_sms") {
-                currentRoute = "import_sms"
                 ImportSmsScreen(
                     onBackClick = {
                         navController.popBackStack()
@@ -134,12 +150,12 @@ fun MainScreen() {
                     onImportComplete = {
                         navController.navigate("home") {
                             popUpTo("home") { inclusive = true }
+                            launchSingleTop = true
                         }
                     }
                 )
             }
-
-             */
+            */
         }
     }
 }
