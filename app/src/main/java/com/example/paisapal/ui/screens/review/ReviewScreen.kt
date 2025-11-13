@@ -32,7 +32,10 @@ fun ReviewScreen(
     // Show snackbar when message is set
     LaunchedEffect(snackbarMessage) {
         snackbarMessage?.let {
-            snackbarHostState.showSnackbar(it)
+            snackbarHostState.showSnackbar(
+                message = it,
+                duration = SnackbarDuration.Short
+            )
             viewModel.clearSnackbar()
         }
     }
@@ -128,7 +131,7 @@ private fun SmartSuggestionCard(
                 )
             }
 
-            HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
+            HorizontalDivider(color = SurfaceLighter, thickness = 0.5.dp)
 
             // Suggestion
             Text(
@@ -196,12 +199,13 @@ private fun CategorySelectionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Select Category") },
+        containerColor = SurfaceDark,
+        title = { Text("Select Category", color = TextWhite) },
         text = {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                items(categories) { category ->
+                categories.forEach { category ->
                     TextButton(
                         onClick = { onCategorySelected(category) },
                         modifier = Modifier.fillMaxWidth()
@@ -209,7 +213,8 @@ private fun CategorySelectionDialog(
                         Text(
                             category,
                             modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Start
+                            textAlign = TextAlign.Start,
+                            color = TextWhite
                         )
                     }
                 }
@@ -218,7 +223,7 @@ private fun CategorySelectionDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("Cancel", color = TextGray)
             }
         }
     )

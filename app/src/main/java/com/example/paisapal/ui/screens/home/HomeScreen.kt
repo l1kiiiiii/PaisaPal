@@ -55,23 +55,30 @@ import com.example.paisapal.ui.theme.SurfaceLighter
 import com.example.paisapal.ui.theme.TextGray
 import com.example.paisapal.ui.theme.TextWhite
 import com.example.paisapal.ui.theme.WarningOrange
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.text.input.KeyboardType
+import java.util.UUID
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
-    // onImportClick: () -> Unit = {},
     onTransactionClick: (Transaction) -> Unit = {},
-    onReviewClick: () -> Unit = {},
-    onQuickAddClick: () -> Unit = {}
+    onReviewClick: () -> Unit = {}
 ) {
     val smartFeedItems by viewModel.smartFeedItems.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+
+    // ADD: Dialog state
+    var showQuickAddDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = { CompactTopBar("Home", onSettingsClick = {}) },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = onQuickAddClick,
+                onClick = { showQuickAddDialog = true },
                 containerColor = PrimaryGreen
             ) {
                 Icon(
@@ -130,26 +137,196 @@ fun HomeScreen(
                             }
                         }
                     }
-
-                    // Import SMS Button
-                    /*
-                    item {
-
-                        Button(
-                            onClick = onImportClick,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = PrimaryBlue
-                            )
-                        ) {
-                            Text("Import SMS History")
-                        }
-                    }
-                     */
                 }
             }
         }
     }
+
+    // ADD: Quick Add Dialog
+    if (showQuickAddDialog) {
+        QuickAddDialog(
+            onDismiss = { showQuickAddDialog = false },
+            onConfirm = { transaction ->
+                viewModel.addManualTransaction(transaction)
+                showQuickAddDialog = false
+            }
+        )
+    }
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun QuickAddDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (Transaction) -> Unit
+) {
+    var amount by remember { mutableStateOf("") }
+    var merchantName by remember { mutableStateOf("") }
+    var selectedType by remember { mutableStateOf(TransactionType.DEBIT) }
+    var selectedCategory by remember { mutableStateOf("Shopping") }
+    var expanded by remember { mutableStateOf(false) }
+
+    val categories = listOf(
+        "Food & Dining",
+        "Shopping",
+        "Transportation",
+        "Groceries",
+        "Entertainment",
+        "Utilities",
+        "Health & Fitness",
+        "Education",
+        "Transfer",
+        "Other"
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = SurfaceDark,
+        title = {
+            Text(
+                text = "Quick Add Transaction",
+                color = TextWhite,
+                style = MaterialTheme.typography.titleLarge
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Transaction Type Selector
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = selectedType == TransactionType.DEBIT,
+                        onClick = { selectedType = TransactionType.DEBIT },
+                        label = { Text("Expense") },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = DebitRed,
+                            selectedLabelColor = Color.White
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                    FilterChip(
+                        selected = selectedType == TransactionType.CREDIT,
+                        onClick = { selectedType = TransactionType.CREDIT },
+                        label = { Text("Income") },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = CreditGreen,
+                            selectedLabelColor = Color.White
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                // Amount Input
+                OutlinedTextField(
+                    value = amount,
+                    onValueChange = { amount = it.filter { char -> char.isDigit() || char == '.' } },
+                    label = { Text("Amount", color = TextGray) },
+                    placeholder = { Text("0.00", color = TextGray) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PrimaryGreen,
+                        unfocusedBorderColor = SurfaceLighter,
+                        focusedTextColor = TextWhite,
+                        unfocusedTextColor = TextWhite
+                    )
+                )
+
+                // Merchant Name Input
+                OutlinedTextField(
+                    value = merchantName,
+                    onValueChange = { merchantName = it },
+                    label = { Text("Merchant Name", color = TextGray) },
+                    placeholder = { Text("e.g., Zomato", color = TextGray) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PrimaryGreen,
+                        unfocusedBorderColor = SurfaceLighter,
+                        focusedTextColor = TextWhite,
+                        unfocusedTextColor = TextWhite
+                    )
+                )
+
+                // Category Dropdown
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded }
+                ) {
+                    OutlinedTextField(
+                        value = selectedCategory,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Category", color = TextGray) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryGreen,
+                            unfocusedBorderColor = SurfaceLighter,
+                            focusedTextColor = TextWhite,
+                            unfocusedTextColor = TextWhite
+                        )
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier.background(SurfaceDark)
+                    ) {
+                        categories.forEach { category ->
+                            DropdownMenuItem(
+                                text = { Text(category, color = TextWhite) },
+                                onClick = {
+                                    selectedCategory = category
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val amountValue = amount.toDoubleOrNull()
+                    if (amountValue != null && amountValue > 0 && merchantName.isNotBlank()) {
+                        val transaction = Transaction(
+                            id = UUID.randomUUID().toString(),
+                            amount = amountValue,
+                            type = selectedType,
+                            timestamp = System.currentTimeMillis(),
+                            merchantRaw = merchantName,
+                            merchantDisplayName = merchantName,
+                            upiVpa = null,
+                            referenceNumber = null,
+                            category = selectedCategory,
+                            sender = "Manual Entry",
+                            smsBody = "Manually added transaction",
+                            needsReview = false
+                        )
+                        onConfirm(transaction)
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                enabled = amount.toDoubleOrNull() != null && merchantName.isNotBlank()
+            ) {
+                Text("Add Transaction")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = TextGray)
+            }
+        }
+    )
 }
 
 // ===== Composable Functions =====

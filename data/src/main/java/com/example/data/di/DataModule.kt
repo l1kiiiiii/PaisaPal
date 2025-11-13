@@ -4,7 +4,9 @@ import android.content.Context
 import android.os.Build
 import androidx.room.Room
 import com.example.data.local.*
+import com.example.data.repository.MerchantMappingRepositoryImpl
 import com.example.data.security.SecureDatabaseKeyManager
+import com.example.domain.repository.MerchantMappingRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -74,5 +76,19 @@ object DataModule {
     @Singleton
     fun provideNotificationCacheDao(database: AppDatabase): NotificationCacheDao {
         return database.notificationCacheDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideMerchantMappingDao(database: AppDatabase): MerchantMappingDao {
+        return database.merchantMappingDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideMerchantMappingRepository(
+        dao: MerchantMappingDao
+    ): MerchantMappingRepository {
+        return MerchantMappingRepositoryImpl(dao)
     }
 }

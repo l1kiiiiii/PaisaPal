@@ -1,14 +1,9 @@
 package com.example.data.security
 
 import android.content.Context
-import android.security.keystore.KeyGenParameterSpec
-import android.security.keystore.KeyProperties
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
-import java.security.KeyStore
 import java.security.SecureRandom
-import javax.crypto.KeyGenerator
-import javax.crypto.SecretKey
 
 /**
  * Manages database encryption keys using Android Keystore

@@ -1,27 +1,20 @@
 package com.example.paisapal
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.paisapal.ui.navigation.bottomNavItems
 import com.example.paisapal.ui.screens.budget.BudgetScreen
+import com.example.paisapal.ui.screens.categorize.CategorizeScreen  //  ADD THIS
 import com.example.paisapal.ui.screens.detail.TransactionDetailScreen
 import com.example.paisapal.ui.screens.home.HomeScreen
 import com.example.paisapal.ui.screens.insights.InsightsScreen
@@ -32,26 +25,41 @@ import com.example.paisapal.ui.theme.PrimaryBlue
 @Composable
 fun MainScreen() {
     val navController = rememberNavController()
-    var currentRoute by remember { mutableStateOf("home") }
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
 
+    // Routes without bottom bar
     val navWithoutBottomBar = listOf(
         "import_sms",
-        "transaction_detail",
-        "categorize"
+        "transaction_detail/{transactionId}",
+        "categorize/{transactionId}"  //  ADD THIS
     )
 
-    val showBottomBar = !navWithoutBottomBar.any { currentRoute.startsWith(it) }
+    val showBottomBar = navWithoutBottomBar.none { route ->
+        currentRoute?.startsWith(route.substringBefore("{")) == true
+    }
+
+    BackHandler(enabled = currentRoute != "home") {
+        if (currentRoute in listOf("review", "budget", "insights", "settings")) {
+            navController.navigate("home") {
+                popUpTo("home") { inclusive = true }
+            }
+        } else {
+            navController.popBackStack()
+        }
+    }
 
     Scaffold(
         containerColor = Color.Black,
         bottomBar = {
             if (showBottomBar) {
                 PaisaPalBottomNavigation(
-                    currentRoute = currentRoute,
+                    currentRoute = currentRoute ?: "home",
                     onNavigate = { route ->
-                        currentRoute = route
                         navController.navigate(route) {
-                            popUpTo("home") { saveState = true }
+                            popUpTo(navController.graph.startDestinationId) {
+                                saveState = true
+                            }
                             launchSingleTop = true
                             restoreState = true
                         }
@@ -65,51 +73,46 @@ fun MainScreen() {
             startDestination = "home",
             modifier = Modifier.padding(paddingValues)
         ) {
-            composable("home") {
-                currentRoute = "home"
-                HomeScreen(
-                    /*
-                    onImportClick = {
-                        navController.navigate("import_sms")
-                    },
+            // ===== BOTTOM NAV SCREENS =====
 
-                     */
+            composable("home") {
+                HomeScreen(
                     onTransactionClick = { transaction ->
                         navController.navigate("transaction_detail/${transaction.id}")
                     },
                     onReviewClick = {
                         navController.navigate("review")
-                    },
-                    onQuickAddClick = {
                     }
                 )
             }
 
             composable("review") {
-                currentRoute = "review"
                 ReviewScreen()
             }
 
             composable("budget") {
-                currentRoute = "budget"
                 BudgetScreen()
             }
 
             composable("insights") {
-                currentRoute = "insights"
                 InsightsScreen()
             }
 
             composable("settings") {
-                currentRoute = "settings"
                 SettingsScreen()
             }
 
+            // ===== DETAIL SCREENS =====
+
             composable(
-                "transaction_detail/{transactionId}",
-                arguments = listOf(navArgument("transactionId") { type = NavType.StringType })
+                route = "transaction_detail/{transactionId}",
+                arguments = listOf(
+                    navArgument("transactionId") {
+                        type = NavType.StringType
+                        nullable = false
+                    }
+                )
             ) { backStackEntry ->
-                currentRoute = "transaction_detail"
                 val transactionId = backStackEntry.arguments?.getString("transactionId")
 
                 if (transactionId != null) {
@@ -117,31 +120,53 @@ fun MainScreen() {
                         transactionId = transactionId,
                         onBackClick = {
                             navController.popBackStack()
+                        },
+                        //   Navigate to categorize screen
+                        onCategorizeClick = {
+                            navController.navigate("categorize/$transactionId")
                         }
                     )
                 } else {
-                    // Handle error - invalid transaction ID
+                    LaunchedEffect(Unit) {
+                        navController.navigate("home") {
+                            popUpTo("home") { inclusive = true }
+                        }
+                    }
+                }
+            }
+
+            //   Categorize Screen Route
+            composable(
+                route = "categorize/{transactionId}",
+                arguments = listOf(
+                    navArgument("transactionId") {
+                        type = NavType.StringType
+                        nullable = false
+                    }
+                )
+            ) { backStackEntry ->
+                val transactionId = backStackEntry.arguments?.getString("transactionId")
+
+                if (transactionId != null) {
+                    CategorizeScreen(
+                        transactionId = transactionId,
+                        onBackClick = {
+                            navController.popBackStack()
+                        },
+                        onCategorizeComplete = { category ->
+                            // Return to detail screen with success
+                            navController.previousBackStackEntry
+                                ?.savedStateHandle
+                                ?.set("categorized", category)
+                            navController.popBackStack()
+                        }
+                    )
+                } else {
                     LaunchedEffect(Unit) {
                         navController.popBackStack()
                     }
                 }
             }
-            /*
-            composable("import_sms") {
-                currentRoute = "import_sms"
-                ImportSmsScreen(
-                    onBackClick = {
-                        navController.popBackStack()
-                    },
-                    onImportComplete = {
-                        navController.navigate("home") {
-                            popUpTo("home") { inclusive = true }
-                        }
-                    }
-                )
-            }
-
-             */
         }
     }
 }
