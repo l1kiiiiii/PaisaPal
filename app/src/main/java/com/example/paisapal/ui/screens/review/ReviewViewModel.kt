@@ -1,7 +1,6 @@
 package com.example.paisapal.ui.screens.review
 
-
-import android.os.Build
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.domain.model.Transaction
@@ -11,73 +10,146 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+//  ReviewItem data class
 data class ReviewItem(
     val transaction: Transaction,
-    val suggestedCategory: String
+    val suggestedCategory: String,
+    val confidence: Float = 0.8f
 )
 
 @HiltViewModel
 class ReviewViewModel @Inject constructor(
     private val repository: TransactionRepository
-    // TODO: Inject MerchantMappingRepository when available
 ) : ViewModel() {
 
+    private val _uncategorizedTransactions = MutableStateFlow<List<Transaction>>(emptyList())
+    val uncategorizedTransactions: StateFlow<List<Transaction>> = _uncategorizedTransactions.asStateFlow()
+
+    //  reviewItems with suggestions
+    val reviewItems: StateFlow<List<ReviewItem>> = _uncategorizedTransactions.map { transactions ->
+        transactions.map { transaction ->
+            ReviewItem(
+                transaction = transaction,
+                suggestedCategory = suggestCategory(transaction)
+            )
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
+    //  Snackbar message
     private val _snackbarMessage = MutableStateFlow<String?>(null)
     val snackbarMessage: StateFlow<String?> = _snackbarMessage.asStateFlow()
 
-    val reviewItems: StateFlow<List<ReviewItem>> = repository.getAllTransactions()
-        .map { transactions ->
-            transactions
-                .filter { it.category == null }
-                .map { transaction ->
-                    ReviewItem(
-                        transaction = transaction,
-                        suggestedCategory = suggestCategory(transaction)
-                    )
-                }
-        }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
+    init {
+        loadUncategorizedTransactions()
+    }
 
-    fun confirmCategory(transactionId: String, category: String, merchantKeyword: String?) {
+    private fun loadUncategorizedTransactions() {
         viewModelScope.launch {
-            // Update transaction category
-            repository.updateTransactionCategory(transactionId, category)
+            try {
+                _isLoading.value = true
+                _error.value = null
 
-            // Save merchant mapping rule if keyword exists
-            merchantKeyword?.let {
-                // TODO: repository.saveMerchantMapping(it, category)
+                repository.getUncategorizedTransactions()
+                    .catch { e ->
+                        Log.e(TAG, "Error loading uncategorized transactions", e)
+                        _error.value = "Failed to load transactions"
+                        _isLoading.value = false
+                    }
+                    .collect { transactions ->
+                        _uncategorizedTransactions.value = transactions
+                        _isLoading.value = false
+                    }
+            } catch (e: Exception) {
+                Log.e(TAG, "Fatal error", e)
+                _error.value = "An unexpected error occurred"
+                _isLoading.value = false
             }
-
-            _snackbarMessage.value = "✅ Got it! I'll remember that for next time."
         }
     }
 
+    //  confirmCategory method
+    fun confirmCategory(transactionId: String, category: String, merchantKeyword: String?) {
+        viewModelScope.launch {
+            try {
+                repository.updateTransactionCategory(transactionId, category)
+                _snackbarMessage.value = "Categorized as '$category'"
+                Log.d(TAG, "Transaction categorized: $category")
+
+                // TODO: Store merchant keyword for future learning
+                merchantKeyword?.let {
+                    // Save to learning database
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error categorizing transaction", e)
+                _error.value = "Failed to categorize transaction"
+            }
+        }
+    }
+
+    fun categorizeTransaction(transactionId: String, category: String) {
+        confirmCategory(transactionId, category, null)
+    }
+
+    //  Category suggestion logic
+    private fun suggestCategory(transaction: Transaction): String {
+        // Simple keyword-based suggestion
+        val merchantName = transaction.merchantDisplayName?.lowercase() ?: ""
+        val smsBody = transaction.smsBody.lowercase()
+
+        return when {
+            // Food & Dining
+            merchantName.contains("zomato") || merchantName.contains("swiggy") ||
+                    merchantName.contains("restaurant") || smsBody.contains("food") -> "Food & Dining"
+
+            // Shopping
+            merchantName.contains("amazon") || merchantName.contains("flipkart") ||
+                    merchantName.contains("myntra") || smsBody.contains("shopping") -> "Shopping"
+
+            // Transportation
+            merchantName.contains("uber") || merchantName.contains("ola") ||
+                    merchantName.contains("rapido") || smsBody.contains("ride") -> "Transportation"
+
+            // Entertainment
+            merchantName.contains("netflix") || merchantName.contains("hotstar") ||
+                    merchantName.contains("spotify") || merchantName.contains("movie") -> "Entertainment"
+
+            // Bills & Utilities
+            smsBody.contains("electricity") || smsBody.contains("water") ||
+                    smsBody.contains("bill") || smsBody.contains("recharge") -> "Bills & Utilities"
+
+            // Healthcare
+            merchantName.contains("pharma") || merchantName.contains("hospital") ||
+                    smsBody.contains("medicine") || smsBody.contains("doctor") -> "Healthcare"
+
+            // Education
+            merchantName.contains("course") || merchantName.contains("udemy") ||
+                    smsBody.contains("tuition") || smsBody.contains("education") -> "Education"
+
+            // Default
+            else -> "Others"
+        }
+    }
+
+    fun clearError() {
+        _error.value = null
+    }
+
+    //  clearSnackbar method
     fun clearSnackbar() {
         _snackbarMessage.value = null
     }
 
-    private fun suggestCategory(transaction: Transaction): String {
-        // Time-based suggestion
-        val hour = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            java.time.LocalDateTime.ofInstant(
-                java.time.Instant.ofEpochMilli(transaction.timestamp),
-                java.time.ZoneId.systemDefault()
-            ).hour
-        } else {
-            TODO("VERSION.SDK_INT < O")
-        }
-
-        return when {
-            hour in 6..10 -> "Food & Dining"
-            hour in 12..14 -> "Food & Dining"
-            hour in 18..22 -> "Food & Dining"
-            hour in 22..24 || hour in 0..2 -> "Entertainment"
-            transaction.amount > 5000 -> "Shopping"
-            else -> "Others"
-        }
+    companion object {
+        private const val TAG = "ReviewViewModel"
     }
 }
