@@ -1,6 +1,6 @@
 [versions]
 agp = "8.13.1"
-androidDatabaseSqlcipher = "4.5.4"
+androidDatabaseSqlcipher = "4.6.1"
 composeBom = "2024.06.00"
 composeM3 = "1.13.1"
 composeVersion = "1.13.1"
@@ -29,7 +29,7 @@ androidxTestEspresso = "3.5.1"
 playServicesLocationVersion = "21.3.0"
 
 [libraries]
-android-database-sqlcipher = { module = "net.zetetic:android-database-sqlcipher", version.ref = "androidDatabaseSqlcipher" }
+android-database-sqlcipher = { module = "net.zetetic:sqlcipher-android", version.ref = "androidDatabaseSqlcipher" }
 androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-hilt-compiler = { module = "androidx.hilt:hilt-compiler", version.ref = "hiltNavigationCompose" }
@@ -69,8 +69,6 @@ junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestJunit" }
 androidx-test-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "androidxTestEspresso" }
 gms-play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocationVersion" }
-
-
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
