@@ -3,9 +3,11 @@ package com.example.paisapal.ui.screens.budget
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.domain.data.MerchantRegistry
 import com.example.domain.model.Budget
 import com.example.domain.model.BudgetPeriod
 import com.example.domain.repository.BudgetRepository
+import com.example.domain.repository.TransactionRepository
 import com.example.domain.usecase.BudgetSummary
 import com.example.domain.usecase.GetBudgetSummaryUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,6 +19,7 @@ import javax.inject.Inject
 @HiltViewModel
 class BudgetViewModel @Inject constructor(
     private val budgetRepository: BudgetRepository,
+    private val transactionRepository: TransactionRepository,
     private val getBudgetSummaryUseCase: GetBudgetSummaryUseCase
 ) : ViewModel() {
 
@@ -29,8 +32,13 @@ class BudgetViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    // Available categories from existing transactions
+    private val _availableCategories = MutableStateFlow<List<String>>(emptyList())
+    val availableCategories: StateFlow<List<String>> = _availableCategories.asStateFlow()
+
     init {
         loadBudgets()
+        loadAvailableCategories()
     }
 
     private fun loadBudgets() {
@@ -57,17 +65,52 @@ class BudgetViewModel @Inject constructor(
         }
     }
 
-    //  Use insertBudget instead of insert
-    fun addBudget(budget: Budget) {
+    private fun loadAvailableCategories() {
         viewModelScope.launch {
             try {
-                budgetRepository.insertBudget(budget)
-                Log.d(TAG, "Budget added: ${budget.category}")
+                // Get all unique categories from transactions
+                transactionRepository.getAllTransactions()
+                    .map { transactions ->
+                        transactions
+                            .mapNotNull { it.category }
+                            .distinct()
+                            .sorted()
+                    }
+                    .catch { e ->
+                        Log.e(TAG, "Error loading categories", e)
+                        // Fallback to predefined categories from MerchantRegistry
+                        emit(getPredefinedCategories())
+                    }
+                    .collect { categories ->
+                        // Combine transaction categories with predefined ones
+                        val allCategories = (categories + getPredefinedCategories())
+                            .distinct()
+                            .sorted()
+                        _availableCategories.value = allCategories
+                    }
             } catch (e: Exception) {
-                Log.e(TAG, "Error adding budget", e)
-                _error.value = "Failed to add budget"
+                Log.e(TAG, "Error loading categories", e)
+                _availableCategories.value = getPredefinedCategories()
             }
         }
+    }
+
+    private fun getPredefinedCategories(): List<String> {
+        return listOf(
+            "Food & Dining",
+            "Shopping",
+            "Groceries",
+            "Transportation",
+            "Entertainment",
+            "Utilities",
+            "Health & Fitness",
+            "Education",
+            "Travel",
+            "Bills & Recharges",
+            "Investment",
+            "Transfer",
+            "Others"
+        )
     }
 
     fun createBudget(
@@ -96,7 +139,6 @@ class BudgetViewModel @Inject constructor(
         }
     }
 
-    //  Use updateBudget instead of update
     fun updateBudget(budget: Budget) {
         viewModelScope.launch {
             try {
@@ -109,17 +151,23 @@ class BudgetViewModel @Inject constructor(
         }
     }
 
-    //  Use deleteBudget instead of delete
-    fun deleteBudget(budget: Budget) {
+    fun deleteBudgetByCategory(category: String) {
         viewModelScope.launch {
             try {
-                budgetRepository.deleteBudget(budget)
-                Log.d(TAG, "Budget deleted: ${budget.category}")
+                val budget = budgetRepository.getBudgetByCategory(category)
+                budget?.let {
+                    budgetRepository.deleteBudget(it)
+                    Log.d(TAG, "Budget deleted: $category")
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Error deleting budget", e)
                 _error.value = "Failed to delete budget"
             }
         }
+    }
+
+    fun showEditDialog(category: String) {
+        // Implement edit functionality if needed
     }
 
     fun clearError() {

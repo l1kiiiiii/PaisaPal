@@ -13,6 +13,11 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+import com.example.data.cache.NotificationCacheImpl
+import com.example.data.location.LocationProviderImpl
+import com.example.domain.data.NotificationCache
+import com.example.domain.repository.LocationProvider
+import dagger.Binds
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -91,4 +96,16 @@ object DataModule {
     ): MerchantMappingRepository {
         return MerchantMappingRepositoryImpl(dao)
     }
+
+    @Binds
+    @Singleton
+    abstract fun bindNotificationCache(
+        impl: NotificationCacheImpl
+    ): NotificationCache
+
+    @Binds
+    @Singleton
+    abstract fun bindLocationProvider(
+        impl: LocationProviderImpl
+    ): LocationProvider
 }

@@ -1,98 +1,113 @@
+// app/src/main/java/com/example/paisapal/service/NotificationMonitorService.kt
 package com.example.paisapal.service
 
-import android.app.Notification
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
-import com.example.domain.model.NotificationData
-import com.example.domain.repository.NotificationRepository
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class NotificationMonitorService : NotificationListenerService() {
 
     @Inject
-    lateinit var notificationRepository: NotificationRepository
-
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    lateinit var notificationCache: NotificationCache
 
     companion object {
         private const val TAG = "NotificationMonitor"
+
+        // Keywords that indicate a payment notification
+        private val PAYMENT_KEYWORDS = listOf(
+            "paid", "payment", "sent", "transferred", "debited",
+            "₹", "rs", "rs.", "inr"
+        )
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        super.onNotificationPosted(sbn)
+        try {
+            val packageName = sbn.packageName
 
-        serviceScope.launch {
-            try {
-                val notification = sbn.notification ?: return@launch
-                val packageName = sbn.packageName
-
-                // Only process known apps
-                if (!AppRegistry.isKnownApp(packageName)) return@launch
-
-                // Extract transaction details from notification
-                val notificationData = extractTransactionData(notification, packageName, sbn)
-
-                if (notificationData != null) {
-                    Log.d(TAG, "Captured notification: $notificationData")
-                    notificationRepository.addNotification(notificationData)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error processing notification", e)
+            // Only process known payment apps
+            if (!AppRegistry.isKnownPaymentApp(packageName)) {
+                return
             }
+
+            val notification = sbn.notification
+            val extras = notification.extras
+
+            val title = extras.getCharSequence("android.title")?.toString() ?: ""
+            val text = extras.getCharSequence("android.text")?.toString() ?: ""
+            val bigText = extras.getCharSequence("android.bigText")?.toString() ?: ""
+
+            val fullText = "$title $text $bigText".lowercase()
+
+            // Check if it's a payment notification
+            if (!isPaymentNotification(fullText)) {
+                return
+            }
+
+            // Extract payment details
+            val amount = extractAmount(fullText)
+            val merchantName = extractMerchantName(fullText)
+
+            if (amount != null && amount > 0) {
+                notificationCache.addNotification(
+                    amount = amount,
+                    merchantName = merchantName,
+                    packageName = packageName,
+                    timestamp = sbn.postTime
+                )
+
+                Log.d(TAG, "Payment notification detected: ₹$amount to $merchantName via $packageName")
+            }
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error processing notification", e)
         }
     }
 
-    private fun extractTransactionData(
-        notification: Notification,
-        packageName: String,
-        sbn: StatusBarNotification
-    ): NotificationData? {
-        val extras = notification.extras
-        val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
-        val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
-        val fullText = "$title $text"
-
-        // Extract amount from notification text
-        val amount = extractAmount(fullText) ?: return null
-
-        // Get app metadata
-        val appInfo = AppRegistry.getAppInfo(packageName) ?: return null
-
-        return NotificationData(
-            packageName = packageName,
-            appName = appInfo.displayName,
-            amount = amount,
-            timestamp = sbn.postTime,
-            fullText = fullText,
-            suggestedCategory = appInfo.category,
-            merchantName = appInfo.displayName
-        )
+    private fun isPaymentNotification(text: String): Boolean {
+        return PAYMENT_KEYWORDS.any { keyword -> text.contains(keyword) }
     }
 
     private fun extractAmount(text: String): Double? {
-        // Match patterns like: ₹500, Rs.500, INR 500, 500.00
+        // Pattern for amount: ₹123.45 or Rs 123 or Rs. 123.45
         val patterns = listOf(
-            "₹\\s*([0-9,]+(?:\\.[0-9]{2})?)",
-            "rs\\.?\\s*([0-9,]+(?:\\.[0-9]{2})?)",
-            "inr\\s*([0-9,]+(?:\\.[0-9]{2})?)",
-            "\\b([0-9]{2,6}(?:\\.[0-9]{2})?)\\b" // Fallback: just numbers
+            "₹\\s*(\\d+(?:\\.\\d{2})?)",
+            "rs\\.?\\s*(\\d+(?:\\.\\d{2})?)",
+            "inr\\s*(\\d+(?:\\.\\d{2})?)"
         )
 
-        for (pattern in patterns) {
+        patterns.forEach { pattern ->
             val regex = Regex(pattern, RegexOption.IGNORE_CASE)
             val match = regex.find(text)
             if (match != null) {
-                val amountStr = match.groupValues[1].replace(",", "")
-                return amountStr.toDoubleOrNull()
+                return match.groupValues[1].toDoubleOrNull()
             }
         }
+
+        return null
+    }
+
+    private fun extractMerchantName(text: String): String? {
+        // Common patterns in payment notifications
+        val patterns = listOf(
+            "to\\s+([^₹\\n]+?)(?:\\s+₹|\\n|\$)",
+            "paid\\s+([^₹\\n]+?)(?:\\s+₹|\\n|\$)",
+            "sent to\\s+([^₹\\n]+?)(?:\\s+₹|\\n|\$)"
+        )
+
+        patterns.forEach { pattern ->
+            val regex = Regex(pattern, RegexOption.IGNORE_CASE)
+            val match = regex.find(text)
+            if (match != null) {
+                val name = match.groupValues[1].trim()
+                if (name.isNotBlank() && name.length > 2) {
+                    return name
+                }
+            }
+        }
+
         return null
     }
 }
