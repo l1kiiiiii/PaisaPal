@@ -1,9 +1,12 @@
+// app/src/main/java/com/example/paisapal/util/SmsReader.kt
 package com.example.paisapal.util
 
 import android.content.Context
 import android.net.Uri
 import android.util.Log
 import com.example.domain.engine.SmsProcessingEngine
+import com.example.domain.model.SmsMessage
+import com.example.domain.repository.TransactionRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -13,7 +16,8 @@ import javax.inject.Singleton
 @Singleton
 class SmsReader @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val smsProcessingEngine: SmsProcessingEngine
+    private val smsProcessingEngine: SmsProcessingEngine,
+    private val transactionRepository: TransactionRepository
 ) {
 
     suspend fun readExistingSms(daysBack: Int = 30) = withContext(Dispatchers.IO) {
@@ -40,9 +44,27 @@ class SmsReader @Inject constructor(
                     val body = it.getString(bodyIndex)
                     val timestamp = it.getLong(dateIndex)
 
-                    // Process through the same engine
-                    smsProcessingEngine.processIncomingSms(body, sender, timestamp)
-                    processedCount++
+                    try {
+                        // Create SmsMessage
+                        val smsMessage = SmsMessage(
+                            id = "${sender}_${timestamp}",
+                            address = sender,
+                            body = body,
+                            timestamp = timestamp,
+                            type = 1 // Inbox
+                        )
+
+                        // Process SMS
+                        val transaction = smsProcessingEngine.processSms(smsMessage)
+
+                        if (transaction != null) {
+                            // Save to database
+                            transactionRepository.insert(transaction)
+                            processedCount++
+                        }
+                    } catch (e: Exception) {
+                        Log.e("SmsReader", "Error processing SMS: ${e.message}")
+                    }
                 }
 
                 Log.d("SmsReader", "Processed $processedCount existing SMS messages")

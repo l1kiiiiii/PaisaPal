@@ -1,3 +1,4 @@
+
 package com.example.data.local.entity
 
 import androidx.room.Entity
@@ -16,5 +17,13 @@ data class TransactionEntity(
     val sender: String,
     val referenceNumber: String?,
     val upiVpa: String?,
-    val needsReview: Boolean
+    val needsReview: Boolean,
+
+    // Context fields
+    val locationLat: Double? = null,
+    val locationLng: Double? = null,
+    val locationAccuracy: Float? = null,
+    val contextSource: String? = null,
+    val detectedPlace: String? = null,
+    val contextConfidence: Float? = null
 )

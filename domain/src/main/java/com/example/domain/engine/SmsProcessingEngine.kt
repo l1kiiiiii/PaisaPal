@@ -1,75 +1,57 @@
+// domain/src/main/java/com/example/domain/engine/SmsProcessingEngine.kt
 package com.example.domain.engine
 
+import com.example.domain.model.SmsMessage
 import com.example.domain.model.Transaction
-import com.example.domain.repository.TransactionRepository
+import javax.inject.Inject
 import java.util.UUID
 
-class SmsProcessingEngine(
+class SmsProcessingEngine @Inject constructor(
+    private val senderAuthentication: SenderAuthentication,
     private val transactionParser: TransactionParser,
     private val categorizationEngine: CategorizationEngine,
-    private val contextEngine: ContextEngine,
-    private val transactionRepository: TransactionRepository
+    private val contextEngine: ContextEngine
 ) {
 
-    suspend fun processIncomingSms(
-        sender: String,
-        body: String,
-        timestamp: Long
-    ): ProcessingResult {
-        // Stage 1 & 2: Parse the SMS
-        val parsedData = transactionParser.parse(body, sender, timestamp)
-            ?: return ProcessingResult.Ignored("Not a transaction SMS")
+    suspend fun processSms(smsMessage: SmsMessage): Transaction? {
+        // Step 1: Verify sender (use 'address' not 'sender')
+        if (!senderAuthentication.isAuthentic(smsMessage.address)) {
+            return null
+        }
 
-        // Create initial transaction object
+        // Step 2: Parse transaction
+        val parsedTransaction = transactionParser.parse(
+            smsMessage.body,
+            smsMessage.address,  // FIXED: use 'address' instead of 'sender'
+            smsMessage.timestamp
+        ) ?: return null
+
+        // Step 3: Convert ParsedTransaction to Transaction
         var transaction = Transaction(
             id = UUID.randomUUID().toString(),
-            amount = parsedData.amount,
-            type = parsedData.type,
-            timestamp = parsedData.timestamp,
-            merchantRaw = parsedData.merchantRaw,
-            merchantDisplayName = parsedData.merchantRaw,
-            upiVpa = parsedData.upiVpa,
-            referenceNumber = parsedData.referenceNumber,
-            sender = sender,
-            smsBody = body,
+            amount = parsedTransaction.amount,
+            type = parsedTransaction.type,
+            merchantRaw = parsedTransaction.merchantRaw,
+            merchantDisplayName = null,
             category = null,
-            needsReview = true
+            timestamp = parsedTransaction.timestamp,
+            smsBody = smsMessage.body,
+            sender = smsMessage.address,  // FIXED: use 'address' instead of 'sender'
+            referenceNumber = parsedTransaction.referenceNumber,
+            upiVpa = parsedTransaction.upiVpa,
+            needsReview = false
         )
 
-        // Stage 3: Try direct categorization
-        // Pass the transaction object to match existing signature
+        // Step 4: Auto-categorize
         val category = categorizationEngine.categorize(transaction)
+        transaction = transaction.copy(
+            category = category,
+            needsReview = category == null
+        )
 
-        if (category != null) {
-            transaction = transaction.copy(
-                category = category,
-                merchantDisplayName = parsedData.merchantRaw ?: "Unknown",
-                needsReview = false
-            )
-            transactionRepository.insert(transaction)
-            return ProcessingResult.Success(transaction, "Direct Match")
-        }
+        // Step 5: Enrich with context
+        val enriched = contextEngine.enrichWithContext(transaction)
 
-        // Stage 4: Try context enrichment (notification + location)
-        val contextMatch = contextEngine.enrichWithContext(transaction)
-        if (contextMatch != null) {
-            transaction = transaction.copy(
-                category = contextMatch.category,
-                merchantDisplayName = contextMatch.merchantName,
-                needsReview = false
-            )
-            transactionRepository.insert(transaction)
-            return ProcessingResult.Success(transaction, "Context Match")
-        }
-
-        // Stage 5: Needs review
-        transactionRepository.insert(transaction)
-        return ProcessingResult.NeedsReview(transaction)
-    }
-
-    sealed class ProcessingResult {
-        data class Success(val transaction: Transaction, val stage: String) : ProcessingResult()
-        data class NeedsReview(val transaction: Transaction) : ProcessingResult()
-        data class Ignored(val reason: String) : ProcessingResult()
+        return enriched.transaction
     }
 }

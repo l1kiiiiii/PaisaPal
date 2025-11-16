@@ -2,19 +2,21 @@ package com.example.paisapal.ui.screens.budget
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -29,6 +31,7 @@ fun BudgetScreen(
 ) {
     val budgetSummaries by viewModel.budgetSummaries.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val availableCategories by viewModel.availableCategories.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -72,7 +75,12 @@ fun BudgetScreen(
                         fontSize = 18.sp,
                         color = TextGray
                     )
-                    Button(onClick = { showAddDialog = true }) {
+                    Button(
+                        onClick = { showAddDialog = true },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = PrimaryGreenLight
+                        )
+                    ) {
                         Text("Create Your First Budget")
                     }
                 }
@@ -86,12 +94,10 @@ fun BudgetScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Overall Summary Card
                 item {
                     OverallBudgetCard(budgetSummaries)
                 }
 
-                // Alerts Card
                 val overBudgetCount = budgetSummaries.count { it.isOverBudget }
                 val nearLimitCount = budgetSummaries.count { it.progress >= 0.8f && !it.isOverBudget }
 
@@ -101,7 +107,6 @@ fun BudgetScreen(
                     }
                 }
 
-                // Category Budgets Header
                 item {
                     Text(
                         "Category Budgets",
@@ -111,22 +116,10 @@ fun BudgetScreen(
                     )
                 }
 
-                // Category Budget List
                 items(budgetSummaries) { budget ->
                     BudgetCard(
                         budget = budget,
-                        onDelete = { viewModel.deleteBudget(
-                            com.example.domain.model.Budget(
-                                id = budget.category, // You'll need to store actual budget ID
-                                category = budget.category,
-                                limitAmount = budget.budgetAmount,
-                                spentAmount = budget.spentAmount,
-                                period = com.example.domain.model.BudgetPeriod.MONTHLY,
-                                alertThreshold = 0.8f,
-                                isActive = true,
-                                createdAt = System.currentTimeMillis()
-                            )
-                        )}
+                        onDelete = { viewModel.deleteBudgetByCategory(budget.category) }
                     )
                 }
             }
@@ -135,6 +128,7 @@ fun BudgetScreen(
 
     if (showAddDialog) {
         AddBudgetDialog(
+            availableCategories = availableCategories,
             onDismiss = { showAddDialog = false },
             onConfirm = { category, amount ->
                 viewModel.createBudget(category, amount)
@@ -290,16 +284,33 @@ private fun BudgetCard(
                     color = TextWhite
                 )
 
-                Text(
-                    "${String.format("%.0f", budget.progress * 100)}%",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = when {
-                        budget.isOverBudget -> DebitRed
-                        budget.progress >= 0.8f -> WarningOrange
-                        else -> CreditGreen
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        "${String.format("%.0f", budget.progress * 100)}%",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = when {
+                            budget.isOverBudget -> DebitRed
+                            budget.progress >= 0.8f -> WarningOrange
+                            else -> CreditGreen
+                        }
+                    )
+
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Delete Budget",
+                            tint = TextGray,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
-                )
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -315,7 +326,7 @@ private fun BudgetCard(
                 )
 
                 Text(
-                    "₹${String.format("%.0f", budget.remainingAmount)} left",
+                    "₹${String.format("%.0f", budget.remainingAmount)} ${if (budget.isOverBudget) "over" else "left"}",
                     fontSize = 12.sp,
                     color = if (budget.isOverBudget) DebitRed else CreditGreen
                 )
@@ -339,32 +350,77 @@ private fun BudgetCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddBudgetDialog(
+    availableCategories: List<String>,
     onDismiss: () -> Unit,
     onConfirm: (String, Double) -> Unit
 ) {
-    var category by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
+    var expanded by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Budget") },
+        title = { Text("Add Budget", color = TextWhite) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = category,
-                    onValueChange = { category = it },
-                    label = { Text("Category") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                // Category Dropdown
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded }
+                ) {
+                    OutlinedTextField(
+                        value = selectedCategory,
+                        onValueChange = { },
+                        readOnly = true,
+                        label = { Text("Category") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryGreenLight,
+                            unfocusedBorderColor = DividerColor
+                        )
+                    )
 
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        availableCategories.forEach { category ->
+                            DropdownMenuItem(
+                                text = { Text(category) },
+                                onClick = {
+                                    selectedCategory = category
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Amount Input
                 OutlinedTextField(
                     value = amount,
-                    onValueChange = { amount = it },
+                    onValueChange = {
+                        if (it.isEmpty() || it.matches(Regex("^\\d*\\.?\\d*$"))) {
+                            amount = it
+                        }
+                    },
                     label = { Text("Budget Amount") },
                     modifier = Modifier.fillMaxWidth(),
-                    prefix = { Text("₹") }
+                    prefix = { Text("₹") },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal
+                    ),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PrimaryGreenLight,
+                        unfocusedBorderColor = DividerColor
+                    ),
+                    singleLine = true
                 )
             }
         },
@@ -372,18 +428,25 @@ private fun AddBudgetDialog(
             Button(
                 onClick = {
                     val amt = amount.toDoubleOrNull()
-                    if (category.isNotBlank() && amt != null) {
-                        onConfirm(category, amt)
+                    if (selectedCategory.isNotBlank() && amt != null && amt > 0) {
+                        onConfirm(selectedCategory, amt)
                     }
-                }
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PrimaryGreenLight
+                ),
+                enabled = selectedCategory.isNotBlank() && amount.toDoubleOrNull() != null && amount.toDoubleOrNull()!! > 0
             ) {
                 Text("Add")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("Cancel", color = TextGray)
             }
-        }
+        },
+        containerColor = SurfaceDark,
+        titleContentColor = TextWhite,
+        textContentColor = TextWhite
     )
 }

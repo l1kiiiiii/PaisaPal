@@ -1,3 +1,4 @@
+// domain/src/main/java/com/example/domain/model/Transaction.kt
 package com.example.domain.model
 
 data class Transaction(
@@ -12,7 +13,15 @@ data class Transaction(
     val sender: String,
     val referenceNumber: String?,
     val upiVpa: String?,
-    val needsReview: Boolean
+    val needsReview: Boolean,
+
+    // ADD THESE NEW FIELDS
+    val locationLat: Double? = null,
+    val locationLng: Double? = null,
+    val locationAccuracy: Float? = null,
+    val contextSource: String? = null,
+    val detectedPlace: String? = null,
+    val contextConfidence: Float? = null
 )
 
 enum class TransactionType {

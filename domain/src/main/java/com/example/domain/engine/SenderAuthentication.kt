@@ -1,3 +1,4 @@
+// domain/src/main/java/com/example/domain/engine/SenderAuthentication.kt
 package com.example.domain.engine
 
 import javax.inject.Inject
@@ -12,6 +13,11 @@ class SenderAuthentication @Inject constructor() {
         // Credit Cards
         "HDFCBK", "ICICIC", "SBCARD", "AXISCRD"
     )
+
+    // ADD THIS METHOD (alias for backward compatibility)
+    fun isValidSender(sender: String): Boolean {
+        return isAuthentic(sender)
+    }
 
     fun isAuthentic(sender: String): Boolean {
         // Check exact match
