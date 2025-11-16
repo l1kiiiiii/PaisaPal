@@ -1,18 +1,10 @@
+// app/src/main/java/com/example/paisapal/di/AppModule.kt
 package com.example.paisapal.di
 
-import com.example.domain.engine.CategorizationEngine
-import com.example.domain.engine.ContextEngine
-import com.example.domain.engine.SmsProcessingEngine
-import com.example.domain.engine.TransactionMatchingEngine
-import com.example.domain.engine.TransactionParser
-import com.example.domain.repository.BudgetRepository
-import com.example.domain.repository.NotificationRepository
-import com.example.domain.repository.SavedPlaceRepository
-import com.example.domain.repository.TransactionRepository
-import com.example.domain.usecase.CheckBudgetAlertsUseCase
-import com.example.domain.usecase.GetBudgetSummaryUseCase
-import com.example.domain.usecase.GetInsightsUseCase
-import com.example.domain.usecase.MatchTransactionsUseCase
+import com.example.domain.data.NotificationCache
+import com.example.domain.engine.*
+import com.example.domain.repository.*
+import com.example.domain.usecase.*
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -37,13 +29,21 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideSenderAuthentication(): SenderAuthentication {
+        return SenderAuthentication()
+    }
+
+    @Provides
+    @Singleton
     fun provideContextEngine(
-        notificationRepository: NotificationRepository,
-        savedPlaceRepository: SavedPlaceRepository
+        notificationCache: NotificationCache,
+        savedPlaceRepository: SavedPlaceRepository,
+        locationProvider: LocationProvider
     ): ContextEngine {
         return ContextEngine(
-            notificationRepository = notificationRepository,
-            savedPlaceRepository = savedPlaceRepository
+            notificationCache = notificationCache,
+            savedPlaceRepository = savedPlaceRepository,
+            locationProvider = locationProvider
         )
     }
 
@@ -66,16 +66,16 @@ object AppModule {
     @Provides
     @Singleton
     fun provideSmsProcessingEngine(
+        senderAuthentication: SenderAuthentication,
         transactionParser: TransactionParser,
         categorizationEngine: CategorizationEngine,
-        contextEngine: ContextEngine,
-        transactionRepository: TransactionRepository
+        contextEngine: ContextEngine
     ): SmsProcessingEngine {
         return SmsProcessingEngine(
+            senderAuthentication = senderAuthentication,
             transactionParser = transactionParser,
             categorizationEngine = categorizationEngine,
-            contextEngine = contextEngine,
-            transactionRepository = transactionRepository
+            contextEngine = contextEngine
         )
     }
 

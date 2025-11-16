@@ -4,6 +4,8 @@ package com.example.paisapal.service
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import com.example.domain.data.AppRegistry  // ADD THIS
+import com.example.domain.data.NotificationCache  // ADD THIS
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 

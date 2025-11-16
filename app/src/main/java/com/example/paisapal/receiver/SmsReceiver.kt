@@ -1,3 +1,4 @@
+// app/src/main/java/com/example/paisapal/receiver/SmsReceiver.kt
 package com.example.paisapal.receiver
 
 import android.Manifest
@@ -9,6 +10,8 @@ import android.provider.Telephony
 import android.util.Log
 import androidx.core.content.ContextCompat
 import com.example.domain.engine.SmsProcessingEngine
+import com.example.domain.model.SmsMessage
+import com.example.domain.repository.TransactionRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import javax.inject.Inject
@@ -19,20 +22,20 @@ class SmsReceiver : BroadcastReceiver() {
     @Inject
     lateinit var smsProcessingEngine: SmsProcessingEngine
 
+    @Inject
+    lateinit var transactionRepository: TransactionRepository
+
     override fun onReceive(context: Context?, intent: Intent?) {
-        // Null safety checks
         if (context == null || intent == null) {
             Log.w(TAG, "Context or Intent is null")
             return
         }
 
-        // Verify action
         if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
             Log.w(TAG, "Invalid action: ${intent.action}")
             return
         }
 
-        // Check SMS permission
         if (ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.RECEIVE_SMS
@@ -42,15 +45,13 @@ class SmsReceiver : BroadcastReceiver() {
             return
         }
 
-        //  Use goAsync() to extend receiver lifetime
         val pendingResult: PendingResult = goAsync()
 
-        // Extract messages
         val messages = try {
             Telephony.Sms.Intents.getMessagesFromIntent(intent)
         } catch (e: Exception) {
             Log.e(TAG, "Error extracting messages", e)
-            pendingResult.finish() // Always cleanup
+            pendingResult.finish()
             return
         }
 
@@ -60,7 +61,6 @@ class SmsReceiver : BroadcastReceiver() {
             return
         }
 
-        //  Process SMS in background with proper cleanup
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 messages.forEach { message ->
@@ -71,18 +71,32 @@ class SmsReceiver : BroadcastReceiver() {
                     Log.d(TAG, "Processing SMS from: $sender")
 
                     try {
-                        // Process the SMS
-                        smsProcessingEngine.processIncomingSms(sender, body, timestamp)
-                        Log.d(TAG, " SMS processed successfully")
+                        // Create SmsMessage
+                        val smsMessage = SmsMessage(
+                            id = "${sender}_${timestamp}",
+                            address = sender,
+                            body = body,
+                            timestamp = timestamp,
+                            type = 1 // Inbox
+                        )
+
+                        // Process SMS
+                        val transaction = smsProcessingEngine.processSms(smsMessage)
+
+                        if (transaction != null) {
+                            // Save to database
+                            transactionRepository.insert(transaction)
+                            Log.d(TAG, "✓ Transaction saved: ${transaction.amount}")
+                        } else {
+                            Log.d(TAG, "SMS not a transaction")
+                        }
                     } catch (e: Exception) {
                         Log.e(TAG, "❌ Error processing SMS from $sender", e)
-                        // Continue processing other messages
                     }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Fatal error in SMS processing", e)
             } finally {
-                //  ALWAYS release the wakelock
                 try {
                     pendingResult.finish()
                     Log.d(TAG, "PendingResult finished")
