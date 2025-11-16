@@ -14,17 +14,16 @@ class SmsProcessingEngine @Inject constructor(
 ) {
 
     suspend fun processSms(smsMessage: SmsMessage): Transaction? {
-        // Step 1: Verify sender
-        if (!senderAuthentication.isAuthentic(smsMessage.sender)) {
+        // Step 1: Verify sender (use 'address' not 'sender')
+        if (!senderAuthentication.isAuthentic(smsMessage.address)) {
             return null
         }
 
         // Step 2: Parse transaction
-        // IMPORTANT: Match the EXACT parameter names from YOUR TransactionParser.parse() method
         val parsedTransaction = transactionParser.parse(
-            smsMessage.body,     // First parameter: body
-            smsMessage.sender,   // Second parameter: sender
-            smsMessage.timestamp // Third parameter: timestamp
+            smsMessage.body,
+            smsMessage.address,  // FIXED: use 'address' instead of 'sender'
+            smsMessage.timestamp
         ) ?: return null
 
         // Step 3: Convert ParsedTransaction to Transaction
@@ -37,7 +36,7 @@ class SmsProcessingEngine @Inject constructor(
             category = null,
             timestamp = parsedTransaction.timestamp,
             smsBody = smsMessage.body,
-            sender = smsMessage.sender,
+            sender = smsMessage.address,  // FIXED: use 'address' instead of 'sender'
             referenceNumber = parsedTransaction.referenceNumber,
             upiVpa = parsedTransaction.upiVpa,
             needsReview = false

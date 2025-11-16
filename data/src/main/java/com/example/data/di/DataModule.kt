@@ -1,11 +1,16 @@
+// data/src/main/java/com/example/data/di/DataModule.kt
 package com.example.data.di
 
 import android.content.Context
 import android.os.Build
 import androidx.room.Room
+import com.example.data.cache.NotificationCacheImpl
 import com.example.data.local.*
+import com.example.data.local.LocationProviderImpl
 import com.example.data.repository.MerchantMappingRepositoryImpl
 import com.example.data.security.SecureDatabaseKeyManager
+import com.example.domain.data.NotificationCache
+import com.example.domain.repository.LocationProvider
 import com.example.domain.repository.MerchantMappingRepository
 import dagger.Module
 import dagger.Provides
@@ -13,11 +18,6 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
-import com.example.data.cache.NotificationCacheImpl
-import com.example.data.location.LocationProviderImpl
-import com.example.domain.data.NotificationCache
-import com.example.domain.repository.LocationProvider
-import dagger.Binds
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -38,7 +38,6 @@ object DataModule {
         keyManager: SecureDatabaseKeyManager
     ): AppDatabase {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            //  Use Android's native database encryption (API 28+)
             Room.databaseBuilder(
                 context,
                 AppDatabase::class.java,
@@ -46,9 +45,7 @@ object DataModule {
             )
                 .fallbackToDestructiveMigration()
                 .build()
-            // Note: Android P+ auto-encrypts databases when device is locked
         } else {
-            // For older devices, fallback to unencrypted
             Room.databaseBuilder(
                 context,
                 AppDatabase::class.java,
@@ -97,15 +94,21 @@ object DataModule {
         return MerchantMappingRepositoryImpl(dao)
     }
 
-    @Binds
+    // CHANGED: @Binds → @Provides
+    @Provides
     @Singleton
-    abstract fun bindNotificationCache(
+    fun provideNotificationCache(
         impl: NotificationCacheImpl
-    ): NotificationCache
+    ): NotificationCache {
+        return impl
+    }
 
-    @Binds
+    // CHANGED: @Binds → @Provides
+    @Provides
     @Singleton
-    abstract fun bindLocationProvider(
+    fun provideLocationProvider(
         impl: LocationProviderImpl
-    ): LocationProvider
+    ): LocationProvider {
+        return impl
+    }
 }

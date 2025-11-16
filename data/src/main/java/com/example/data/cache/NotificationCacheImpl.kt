@@ -1,5 +1,5 @@
+// data/src/main/java/com/example/data/cache/NotificationCacheImpl.kt
 package com.example.data.cache
-
 
 import com.example.domain.data.NotificationCache
 import com.example.domain.data.PaymentNotification
@@ -8,7 +8,6 @@ import javax.inject.Singleton
 
 @Singleton
 class NotificationCacheImpl @Inject constructor() : NotificationCache {
-
     private val cache = mutableListOf<PaymentNotification>()
     private val maxSize = 50
     private val retentionMs = 5 * 60 * 1000L
