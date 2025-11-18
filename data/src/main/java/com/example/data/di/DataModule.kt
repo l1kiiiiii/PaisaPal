@@ -93,7 +93,7 @@ object DataModule {
     ): MerchantMappingRepository {
         return MerchantMappingRepositoryImpl(dao)
     }
-
+/*
     // CHANGED: @Binds → @Provides
     @Provides
     @Singleton
@@ -111,7 +111,7 @@ object DataModule {
     ): LocationProvider {
         return impl
     }
-
+*/
     @Provides
     @Singleton
     fun provideUserCorrectionDao(database: AppDatabase): UserCorrectionDao {
