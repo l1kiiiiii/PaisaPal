@@ -7,6 +7,7 @@ import com.example.data.local.entity.MerchantMappingEntity
 import com.example.data.local.entity.NotificationCacheEntity
 import com.example.data.local.entity.SavedPlaceEntity
 import com.example.data.local.entity.TransactionEntity
+import com.example.data.local.entity.UserCorrectionEntity
 
 @Database(
     entities = [
@@ -14,7 +15,8 @@ import com.example.data.local.entity.TransactionEntity
         SavedPlaceEntity::class,
         MerchantMappingEntity::class,
         BudgetEntity::class,
-        NotificationCacheEntity::class
+        NotificationCacheEntity::class,
+        UserCorrectionEntity::class
     ],
     version = 1,
     exportSchema = false
@@ -25,4 +27,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun merchantMappingDao(): MerchantMappingDao
     abstract fun budgetDao(): BudgetDao
     abstract fun notificationCacheDao(): NotificationCacheDao
+    abstract fun userCorrectionDao(): UserCorrectionDao
 }

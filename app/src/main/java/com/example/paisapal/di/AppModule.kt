@@ -23,8 +23,10 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideCategorizationEngine(): CategorizationEngine {
-        return CategorizationEngine()
+    fun provideCategorizationEngine(
+        userCorrectionRepository: UserCorrectionRepository  // ADD THIS
+    ): CategorizationEngine {
+        return CategorizationEngine(userCorrectionRepository)
     }
 
     @Provides
