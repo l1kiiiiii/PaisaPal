@@ -111,4 +111,10 @@ object DataModule {
     ): LocationProvider {
         return impl
     }
+
+    @Provides
+    @Singleton
+    fun provideUserCorrectionDao(database: AppDatabase): UserCorrectionDao {
+        return database.userCorrectionDao()
+    }
 }
