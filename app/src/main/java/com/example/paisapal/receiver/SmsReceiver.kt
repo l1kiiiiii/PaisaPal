@@ -8,103 +8,81 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.provider.Telephony
 import android.util.Log
-import androidx.core.content.ContextCompat
-import com.example.domain.engine.SmsProcessingEngine
-import com.example.domain.model.SmsMessage
+import com.example.domain.engine.CategorizationEngine
+import com.example.domain.engine.TransactionParser
 import com.example.domain.repository.TransactionRepository
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class SmsReceiver : BroadcastReceiver() {
 
     @Inject
-    lateinit var smsProcessingEngine: SmsProcessingEngine
+    lateinit var parser: TransactionParser
 
     @Inject
-    lateinit var transactionRepository: TransactionRepository
+    lateinit var categorizationEngine: CategorizationEngine
+
+    @Inject
+    lateinit var repository: TransactionRepository
 
     override fun onReceive(context: Context?, intent: Intent?) {
-        if (context == null || intent == null) {
-            Log.w(TAG, "Context or Intent is null")
-            return
-        }
+        if (intent?.action == Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
+            val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent)
 
-        if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
-            Log.w(TAG, "Invalid action: ${intent.action}")
-            return
-        }
+            messages.forEach { sms ->
+                val sender = sms.displayOriginatingAddress
+                val body = sms.messageBody
+                val timestamp = sms.timestampMillis
 
-        if (ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.RECEIVE_SMS
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            Log.e(TAG, "SMS permission not granted")
-            return
-        }
+                Log.d(TAG, "SMS received from: $sender")
 
-        val pendingResult: PendingResult = goAsync()
-
-        val messages = try {
-            Telephony.Sms.Intents.getMessagesFromIntent(intent)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error extracting messages", e)
-            pendingResult.finish()
-            return
-        }
-
-        if (messages == null || messages.isEmpty()) {
-            Log.w(TAG, "No messages found")
-            pendingResult.finish()
-            return
-        }
-
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                messages.forEach { message ->
-                    val sender = message.displayOriginatingAddress
-                    val body = message.messageBody
-                    val timestamp = message.timestampMillis
-
-                    Log.d(TAG, "Processing SMS from: $sender")
-
-                    try {
-                        // Create SmsMessage
-                        val smsMessage = SmsMessage(
-                            id = "${sender}_${timestamp}",
-                            address = sender,
-                            body = body,
-                            timestamp = timestamp,
-                            type = 1 // Inbox
-                        )
-
-                        // Process SMS
-                        val transaction = smsProcessingEngine.processSms(smsMessage)
-
-                        if (transaction != null) {
-                            // Save to database
-                            transactionRepository.insert(transaction)
-                            Log.d(TAG, "✓ Transaction saved: ${transaction.amount}")
-                        } else {
-                            Log.d(TAG, "SMS not a transaction")
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "❌ Error processing SMS from $sender", e)
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Fatal error in SMS processing", e)
-            } finally {
-                try {
-                    pendingResult.finish()
-                    Log.d(TAG, "PendingResult finished")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error finishing pendingResult", e)
+                // Process SMS in background
+                CoroutineScope(Dispatchers.IO).launch {
+                    processSms(sender, body, timestamp)
                 }
             }
         }
+    }
+
+    private suspend fun processSms(sender: String, body: String, timestamp: Long) {
+        // Check if it's a bank SMS
+        if (!isBankSms(sender)) {
+            Log.d(TAG, "Skipping non-bank SMS from: $sender")
+            return
+        }
+
+        Log.d(TAG, "Processing bank SMS: $body")
+
+        // Parse transaction
+        val transaction = parser.parse(body, sender, timestamp)
+
+        if (transaction != null) {
+            // Auto-categorize
+            val category = categorizationEngine.categorize(transaction)
+            val categorizedTransaction = transaction.copy(
+                category = category,
+                needsReview = category == null
+            )
+
+            // Save to database
+            repository.insert(categorizedTransaction)
+
+            Log.d(TAG, "✅ Transaction saved: ${transaction.amount} - Category: ${category ?: "Uncategorized"}")
+        } else {
+            Log.d(TAG, "❌ Failed to parse SMS")
+        }
+    }
+
+    private fun isBankSms(sender: String): Boolean {
+        val bankKeywords = listOf(
+            "bank", "hdfc", "icici", "sbi", "axis", "kotak", "indus",
+            "paytm", "gpay", "phonepe", "amazon", "googlepay", "bhim"
+        )
+        return bankKeywords.any { sender.contains(it, ignoreCase = true) }
     }
 
     companion object {
