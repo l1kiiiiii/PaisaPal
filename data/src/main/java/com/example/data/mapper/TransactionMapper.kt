@@ -34,6 +34,7 @@ fun Transaction.toEntity(): TransactionEntity {
         sender = sender,
         referenceNumber = referenceNumber,
         upiVpa = upiVpa,
-        needsReview = needsReview
+        needsReview = needsReview,
+        contextData = null
     )
 }

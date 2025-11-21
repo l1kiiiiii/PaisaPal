@@ -3,6 +3,7 @@ package com.example.data.local
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.example.data.local.entity.BudgetEntity
+import com.example.data.local.entity.ContextSignatureEntity
 import com.example.data.local.entity.MerchantMappingEntity
 import com.example.data.local.entity.NotificationCacheEntity
 import com.example.data.local.entity.SavedPlaceEntity
@@ -16,7 +17,8 @@ import com.example.data.local.entity.UserCorrectionEntity
         MerchantMappingEntity::class,
         BudgetEntity::class,
         NotificationCacheEntity::class,
-        UserCorrectionEntity::class
+        UserCorrectionEntity::class,
+        ContextSignatureEntity::class
     ],
     version = 1,
     exportSchema = false
@@ -28,4 +30,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun budgetDao(): BudgetDao
     abstract fun notificationCacheDao(): NotificationCacheDao
     abstract fun userCorrectionDao(): UserCorrectionDao
+    abstract fun contextSignatureDao(): ContextSignatureDao
 }
