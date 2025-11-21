@@ -8,5 +8,6 @@ data class ContextSnapshot(
     val recentNotification: String?,
     val strongestBluetoothDevice: BluetoothFingerprint?,
     val location: GeoLocation?,
-    val amount: Double
+    val amount: Double,
+    val upiVpa: String? = null
 )

@@ -1,6 +1,7 @@
 package com.example.data.remote
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager as SystemBluetoothManager
 import android.bluetooth.le.ScanCallback
@@ -41,6 +42,7 @@ class BluetoothManager(private val context: Context) {
         return selectBestDevice(devices)
     }
 
+    @SuppressLint("MissingPermission")
     private suspend fun performScan(): List<BluetoothFingerprint> =
         suspendCancellableCoroutine { continuation ->
             val devices = mutableListOf<BluetoothFingerprint>()
