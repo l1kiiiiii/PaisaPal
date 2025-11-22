@@ -28,4 +28,6 @@ interface TransactionRepository {
     // Utility functions
     suspend fun transactionExists(transactionId: String): Boolean
     suspend fun updateTransactionCategory(transactionId: String, category: String)
+
+    suspend fun getTransactionContextData(id: String): String?
 }

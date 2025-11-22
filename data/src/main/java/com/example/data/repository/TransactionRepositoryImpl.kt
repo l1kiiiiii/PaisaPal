@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
 class TransactionRepositoryImpl @Inject constructor(
+
     private val dao: TransactionDao
 ) : TransactionRepository {
 
@@ -71,5 +72,9 @@ class TransactionRepositoryImpl @Inject constructor(
 
     override fun getTransactionByIdFlow(transactionId: String): Flow<Transaction?> {
         return dao.getTransactionByIdFlow(transactionId).map { it?.toDomain() }
+    }
+
+    override suspend fun getTransactionContextData(id: String): String? {
+        return dao.getTransactionEntityById(id)?.contextData
     }
 }
