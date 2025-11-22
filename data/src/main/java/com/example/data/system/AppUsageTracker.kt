@@ -5,12 +5,15 @@ import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.pm.PackageManager
+import java.util.concurrent.ConcurrentHashMap
 
 class AppUsageTracker(private val context: Context) {
 
     private val usageStatsManager by lazy {
         context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
     }
+    private val appCache = ConcurrentHashMap<Long, String?>()
+    private val cacheExpiryMs = 30_000L // 30 seconds
 
     private val knownAppCategories = mapOf(
         "com.swiggy.android" to AppCategory.FOOD,
@@ -25,10 +28,18 @@ class AppUsageTracker(private val context: Context) {
     )
 
     fun getForegroundAppAtTime(timestamp: Long): String? {
+        // Check cache first
+        val cacheKey = timestamp / 1000 // Round to seconds
+        val cached = appCache[cacheKey]
+        if (cached != null) return cached
+
+        // Clean old cache entries
+        cleanCache()
+
         if (!hasUsageStatsPermission()) return null
 
-        val startTime = timestamp - 1000L // 1 second before
-        val endTime = timestamp + 500L // 0.5 second after
+        val startTime = timestamp - 1000L
+        val endTime = timestamp + 500L
 
         val events = usageStatsManager?.queryEvents(startTime, endTime) ?: return null
 
@@ -43,11 +54,20 @@ class AppUsageTracker(private val context: Context) {
             }
         }
 
+        // Cache result
+        appCache[cacheKey] = lastForegroundApp
         return lastForegroundApp
     }
 
     fun getCategoryForPackage(packageName: String): AppCategory? {
         return knownAppCategories[packageName]
+    }
+
+    private fun cleanCache() {
+        val currentTime = System.currentTimeMillis()
+        appCache.entries.removeIf { (timestamp, _) ->
+            currentTime - (timestamp * 1000) > cacheExpiryMs
+        }
     }
 
     private fun hasUsageStatsPermission(): Boolean {

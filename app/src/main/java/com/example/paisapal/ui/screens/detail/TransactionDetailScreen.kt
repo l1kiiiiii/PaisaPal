@@ -164,7 +164,7 @@ fun TransactionDetailScreen(
             currentCategory = transaction?.category ?: "",
             onDismiss = { showCategoryDialog = false },
             onConfirm = { newCategory ->
-                viewModel.updateCategory(transactionId, newCategory)
+                viewModel.updateCategory(newCategory)
                 showCategoryDialog = false
             }
         )

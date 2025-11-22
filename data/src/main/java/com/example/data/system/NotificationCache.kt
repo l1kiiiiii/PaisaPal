@@ -2,6 +2,7 @@ package com.example.data.system
 
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -21,6 +22,7 @@ class NotificationCache : NotificationListenerService() {
         val isServiceConnected: StateFlow<Boolean> = _isServiceConnected
 
         private const val CACHE_DURATION_MS = 5 * 60 * 1000L // 5 minutes
+        private var cleanupJob: Job? = null
 
         fun getRecentNotifications(
             aroundTimestamp: Long,
@@ -49,16 +51,35 @@ class NotificationCache : NotificationListenerService() {
             val cutoffTime = System.currentTimeMillis() - CACHE_DURATION_MS
             notificationQueue.removeAll { it.timestamp < cutoffTime }
         }
+
+        private fun startPeriodicCleanup(scope: CoroutineScope) {
+            cleanupJob?.cancel()
+            cleanupJob = scope.launch {
+                while (isActive) {
+                    delay(5 * 60 * 1000L) // Every 5 minutes
+                    cleanOldNotifications()
+                }
+            }
+        }
+
+        private fun stopPeriodicCleanup() {
+            cleanupJob?.cancel()
+            cleanupJob = null
+        }
     }
+
+    private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     override fun onListenerConnected() {
         super.onListenerConnected()
         _isServiceConnected.value = true
+        startPeriodicCleanup(serviceScope)
     }
 
     override fun onListenerDisconnected() {
         super.onListenerDisconnected()
         _isServiceConnected.value = false
+        stopPeriodicCleanup()
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
@@ -74,7 +95,11 @@ class NotificationCache : NotificationListenerService() {
             )
 
             notificationQueue.add(cachedNotification)
-            cleanOldNotifications()
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        serviceScope.cancel()
     }
 }

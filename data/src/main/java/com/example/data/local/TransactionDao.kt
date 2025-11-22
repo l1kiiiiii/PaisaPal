@@ -50,4 +50,8 @@ interface TransactionDao {
 
     @Query("UPDATE transactions SET category = :category, needsReview = 0 WHERE id = :transactionId")
     suspend fun updateCategory(transactionId: String, category: String)
+
+    @Query("SELECT * FROM transactions WHERE id = :id")
+    suspend fun getTransactionEntityById(id: String): TransactionEntity?
+
 }

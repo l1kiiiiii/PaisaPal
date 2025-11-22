@@ -26,5 +26,5 @@ data class TransactionEntity(
     val contextSource: String? = null,
     val detectedPlace: String? = null,
     val contextConfidence: Float? = null,
-    val contextData: String?
+    val contextData: String?=null
 )

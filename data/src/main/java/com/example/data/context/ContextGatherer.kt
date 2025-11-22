@@ -1,7 +1,9 @@
 package com.example.data.context
 
 import android.content.Context
+import com.example.data.permission.PermissionManager
 import com.example.data.remote.BluetoothManager
+import com.example.data.settings.SensorSettings
 import com.example.data.system.AppUsageTracker
 import com.example.data.system.LocationProvider
 import com.example.data.system.NotificationCache
@@ -12,7 +14,9 @@ class ContextGatherer(
     private val context: Context,
     private val bluetoothManager: BluetoothManager,
     private val appUsageTracker: AppUsageTracker,
-    private val locationProvider: LocationProvider
+    private val locationProvider: LocationProvider,
+    private val permissionManager: PermissionManager,
+    private val sensorSettings: SensorSettings
 ) {
 
     suspend fun gatherContext(
@@ -23,33 +27,44 @@ class ContextGatherer(
         upiVpa: String?
     ): ContextSnapshot = withContext(Dispatchers.IO) {
 
-        // Launch all context gathering operations in parallel with 2-second timeout
+        // Check permissions and settings
+        val permissions = permissionManager.checkAllPermissions()
+
+        // Launch context gathering with graceful degradation
         val bluetoothDeferred = async {
-            withTimeoutOrNull(2000L) {
-                bluetoothManager.scanForSoundBoxes()
-            }
+            if (permissions.bluetooth && sensorSettings.isBluetoothEnabled()) {
+                withTimeoutOrNull(2000L) {
+                    bluetoothManager.scanForSoundBoxes().device
+                }
+            } else null
         }
 
         val appDeferred = async {
-            withTimeoutOrNull(500L) {
-                appUsageTracker.getForegroundAppAtTime(timestamp)
-            }
+            if (permissions.usageStats && sensorSettings.isAppUsageEnabled()) {
+                withTimeoutOrNull(500L) {
+                    appUsageTracker.getForegroundAppAtTime(timestamp)
+                }
+            } else null
         }
 
         val notificationDeferred = async {
-            withTimeoutOrNull(500L) {
-                NotificationCache.getRecentNotifications(timestamp, 60_000L)
-                    .firstOrNull()?.text
-            }
+            if (permissions.notificationListener && sensorSettings.isNotificationEnabled()) {
+                withTimeoutOrNull(500L) {
+                    NotificationCache.getRecentNotifications(timestamp, 60_000L)
+                        .firstOrNull()?.text
+                }
+            } else null
         }
 
         val locationDeferred = async {
-            withTimeoutOrNull(1000L) {
-                locationProvider.getCurrentLocation()
-            }
+            if (permissions.location && sensorSettings.isLocationEnabled()) {
+                withTimeoutOrNull(1000L) {
+                    locationProvider.getCurrentLocation()
+                }
+            } else null
         }
 
-        // Wait for all with overall timeout
+        // Hard timeout for all operations
         withTimeoutOrNull(2500L) {
             ContextSnapshot(
                 transactionId = transactionId,

@@ -7,8 +7,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import com.example.paisapal.R
-import com.example.paisapal.MainActivity
 
 class LearningNotificationHelper(private val context: Context) {
 
@@ -21,28 +19,33 @@ class LearningNotificationHelper(private val context: Context) {
     }
 
     fun showLearningPrompt(transactionId: String, merchantInfo: String) {
-        // For now, open MainActivity with transaction ID
-        // You can create CategorySelectionActivity later
-        val intent = Intent(context, MainActivity::class.java).apply {
+        // Create intent to open your app (generic approach)
+        val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
             putExtra("transaction_id", transactionId)
             putExtra("action", "categorize")
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
         }
 
-        val pendingIntent = PendingIntent.getActivity(
-            context,
-            transactionId.hashCode(),
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        val pendingIntent = if (intent != null) {
+            PendingIntent.getActivity(
+                context,
+                transactionId.hashCode(),
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        } else null
 
         val notification = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)  // Use default icon for now
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("New Transaction Detected")
             .setContentText("Help categorize transaction at $merchantInfo")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
-            .setContentIntent(pendingIntent)
+            .apply {
+                if (pendingIntent != null) {
+                    setContentIntent(pendingIntent)
+                }
+            }
             .build()
 
         notificationManager.notify(transactionId.hashCode(), notification)

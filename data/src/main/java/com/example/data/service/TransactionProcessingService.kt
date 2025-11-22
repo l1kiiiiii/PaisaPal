@@ -1,6 +1,5 @@
 package com.example.data.service
 
-
 import android.content.Context
 import com.example.data.context.ContextGatherer
 import com.example.data.local.TransactionDao
@@ -8,10 +7,10 @@ import com.example.data.mapper.toEntity
 import com.example.data.notification.LearningNotificationHelper
 import com.example.domain.engine.ContextAwareCategorizer
 import com.example.domain.model.Transaction
+import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import com.google.gson.Gson
 
 class TransactionProcessingService(
     private val contextGatherer: ContextGatherer,
@@ -74,5 +73,4 @@ class TransactionProcessingService(
         val notificationHelper = LearningNotificationHelper(context)
         notificationHelper.showLearningPrompt(transaction.id, merchantInfo)
     }
-
 }
