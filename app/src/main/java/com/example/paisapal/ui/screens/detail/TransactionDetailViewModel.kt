@@ -1,12 +1,14 @@
-// app/src/main/java/com/example/paisapal/ui/screens/detail/TransactionDetailViewModel.kt
 package com.example.paisapal.ui.screens.detail
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.domain.learning.ContextLearningEngine
+import com.example.domain.model.ContextSnapshot
 import com.example.domain.model.Transaction
 import com.example.domain.repository.TransactionRepository
 import com.example.domain.repository.UserCorrectionRepository
+import com.google.gson.Gson
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -15,8 +17,11 @@ import javax.inject.Inject
 @HiltViewModel
 class TransactionDetailViewModel @Inject constructor(
     private val repository: TransactionRepository,
-    private val userCorrectionRepository: UserCorrectionRepository
+    private val userCorrectionRepository: UserCorrectionRepository,
+    private val learningEngine: ContextLearningEngine  // ADD THIS
 ) : ViewModel() {
+
+    private val gson = Gson()  // ADD THIS
 
     private val _transaction = MutableStateFlow<Transaction?>(null)
     val transaction: StateFlow<Transaction?> = _transaction.asStateFlow()
@@ -89,20 +94,38 @@ class TransactionDetailViewModel @Inject constructor(
         }
     }
 
-    // Legacy method for backward compatibility (if needed)
-    @Deprecated("Use updateCategory(newCategory) instead", ReplaceWith("updateCategory(newCategory)"))
-    fun updateCategory(transactionId: String, newCategory: String) {
-        if (_transaction.value?.id == transactionId) {
-            updateCategory(newCategory)
-        } else {
-            viewModelScope.launch {
-                try {
-                    repository.updateTransactionCategory(transactionId, newCategory)
-                    Log.d(TAG, "Category updated to: $newCategory")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error updating category", e)
-                    _error.value = "Failed to update category"
+    fun correctCategory(transactionId: String, newCategory: String) {
+        viewModelScope.launch {
+            try {
+                // Get transaction with context data
+                val transactionEntity = repository.getTransactionEntityById(transactionId)
+                val contextData = transactionEntity?.contextData
+
+                if (contextData != null) {
+                    try {
+                        val contextSnapshot = gson.fromJson(contextData, ContextSnapshot::class.java)
+
+                        learningEngine.updateSignatureFromCorrection(
+                            transactionId = transactionId,
+                            oldCategory = transactionEntity.category,
+                            newCategory = newCategory,
+                            contextSnapshot = contextSnapshot
+                        )
+                        Log.d(TAG, "Context signature updated for correction")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error updating context signature", e)
+                        // Continue with category update even if context learning fails
+                    }
                 }
+
+                // Update transaction category
+                repository.updateTransactionCategory(transactionId, newCategory)
+                _categoryUpdated.value = true
+                Log.d(TAG, "Category corrected to: $newCategory")
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Error correcting category", e)
+                _error.value = "Failed to correct category"
             }
         }
     }
