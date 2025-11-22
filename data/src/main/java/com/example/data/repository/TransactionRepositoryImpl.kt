@@ -1,6 +1,6 @@
 package com.example.data.repository
 
-import com.example.data.local.TransactionDao
+import com.example.data.local.dao.TransactionDao
 import com.example.data.mapper.toDomain
 import com.example.data.mapper.toEntity
 import com.example.domain.model.Transaction

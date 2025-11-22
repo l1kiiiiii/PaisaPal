@@ -5,8 +5,9 @@ import com.example.domain.model.ContextSnapshot
 import com.example.domain.model.TriggerType
 import com.example.domain.repository.ContextSignatureRepository
 import java.util.*
+import javax.inject.Inject
 
-class ContextLearningEngine(
+class ContextLearningEngine @Inject constructor(
     private val signatureRepository: ContextSignatureRepository
 ) {
 

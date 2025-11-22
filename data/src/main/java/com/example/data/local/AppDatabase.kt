@@ -2,6 +2,13 @@ package com.example.data.local
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import com.example.data.local.dao.BudgetDao
+import com.example.data.local.dao.ContextSignatureDao
+import com.example.data.local.dao.MerchantMappingDao
+import com.example.data.local.dao.NotificationCacheDao
+import com.example.data.local.dao.SavedPlaceDao
+import com.example.data.local.dao.TransactionDao
+import com.example.data.local.dao.UserCorrectionDao
 import com.example.data.local.entity.BudgetEntity
 import com.example.data.local.entity.ContextSignatureEntity
 import com.example.data.local.entity.MerchantMappingEntity
@@ -9,6 +16,7 @@ import com.example.data.local.entity.NotificationCacheEntity
 import com.example.data.local.entity.SavedPlaceEntity
 import com.example.data.local.entity.TransactionEntity
 import com.example.data.local.entity.UserCorrectionEntity
+
 
 @Database(
     entities = [

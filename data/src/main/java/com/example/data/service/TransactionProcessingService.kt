@@ -2,7 +2,7 @@ package com.example.data.service
 
 import android.content.Context
 import com.example.data.context.ContextGatherer
-import com.example.data.local.TransactionDao
+import com.example.data.local.dao.TransactionDao
 import com.example.data.mapper.toEntity
 import com.example.data.notification.LearningNotificationHelper
 import com.example.domain.engine.ContextAwareCategorizer

@@ -1,4 +1,4 @@
-package com.example.data.local
+package com.example.data.local.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
@@ -20,4 +20,10 @@ interface ContextSignatureDao {
 
     @Query("DELETE FROM context_signatures WHERE id = :id")
     suspend fun deleteById(id: String)
+
+    @Query("SELECT * FROM context_signatures")
+    suspend fun getAllSignatures(): List<ContextSignatureEntity>
+
+    @Query("SELECT * FROM context_signatures WHERE id = :id LIMIT 1")
+    suspend fun getById(id: String): ContextSignatureEntity?
 }
