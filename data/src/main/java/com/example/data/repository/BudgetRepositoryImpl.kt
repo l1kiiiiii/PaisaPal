@@ -1,6 +1,6 @@
 package com.example.data.repository
 
-import com.example.data.local.BudgetDao
+import com.example.data.local.dao.BudgetDao
 import com.example.data.local.entity.BudgetEntity
 import com.example.domain.model.Budget
 import com.example.domain.model.BudgetPeriod

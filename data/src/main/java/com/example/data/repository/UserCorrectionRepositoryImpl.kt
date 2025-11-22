@@ -1,6 +1,6 @@
 package com.example.data.repository
 
-import com.example.data.local.UserCorrectionDao
+import com.example.data.local.dao.UserCorrectionDao
 import com.example.data.local.entity.UserCorrectionEntity
 import com.example.domain.repository.UserCorrectionRepository
 import kotlinx.coroutines.flow.firstOrNull

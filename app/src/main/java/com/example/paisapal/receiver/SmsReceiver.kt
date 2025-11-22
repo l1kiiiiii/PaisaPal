@@ -1,4 +1,3 @@
-// app/src/main/java/com/example/paisapal/receiver/SmsReceiver.kt
 package com.example.paisapal.receiver
 
 import android.Manifest
@@ -9,6 +8,7 @@ import android.content.pm.PackageManager
 import android.provider.Telephony
 import android.util.Log
 import androidx.core.content.ContextCompat
+import com.example.data.service.TransactionProcessingService
 import com.example.domain.engine.SmsProcessingEngine
 import com.example.domain.model.SmsMessage
 import com.example.domain.repository.TransactionRepository
@@ -24,6 +24,9 @@ class SmsReceiver : BroadcastReceiver() {
 
     @Inject
     lateinit var transactionRepository: TransactionRepository
+
+    @Inject
+    lateinit var transactionProcessingService: TransactionProcessingService
 
     override fun onReceive(context: Context?, intent: Intent?) {
         if (context == null || intent == null) {
@@ -71,7 +74,7 @@ class SmsReceiver : BroadcastReceiver() {
                     Log.d(TAG, "Processing SMS from: $sender")
 
                     try {
-                        // Create SmsMessage
+                        // STEP 1: Create SmsMessage (EXISTING LOGIC)
                         val smsMessage = SmsMessage(
                             id = "${sender}_${timestamp}",
                             address = sender,
@@ -80,13 +83,25 @@ class SmsReceiver : BroadcastReceiver() {
                             type = 1 // Inbox
                         )
 
-                        // Process SMS
+                        // STEP 2: Process SMS with existing engine (EXISTING LOGIC)
                         val transaction = smsProcessingEngine.processSms(smsMessage)
 
                         if (transaction != null) {
-                            // Save to database
+                            // STEP 3: Save to database (EXISTING LOGIC)
                             transactionRepository.insert(transaction)
                             Log.d(TAG, "✓ Transaction saved: ${transaction.amount}")
+
+                            // STEP 4: NEW - Trigger context-aware processing
+                            // This runs asynchronously and won't block SMS processing
+                            launch {
+                                try {
+                                    transactionProcessingService.processTransaction(transaction)
+                                    Log.d(TAG, "✓ Context-aware processing initiated for: ${transaction.id}")
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "❌ Context processing failed for ${transaction.id}", e)
+                                    // Don't fail the whole SMS processing if context fails
+                                }
+                            }
                         } else {
                             Log.d(TAG, "SMS not a transaction")
                         }

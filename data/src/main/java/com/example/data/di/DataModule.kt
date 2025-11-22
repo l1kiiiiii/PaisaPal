@@ -1,16 +1,18 @@
-// data/src/main/java/com/example/data/di/DataModule.kt
 package com.example.data.di
 
 import android.content.Context
 import android.os.Build
 import androidx.room.Room
-import com.example.data.cache.NotificationCacheImpl
 import com.example.data.local.*
-import com.example.data.local.LocationProviderImpl
+import com.example.data.local.dao.BudgetDao
+import com.example.data.local.dao.ContextSignatureDao
+import com.example.data.local.dao.MerchantMappingDao
+import com.example.data.local.dao.NotificationCacheDao
+import com.example.data.local.dao.SavedPlaceDao
+import com.example.data.local.dao.TransactionDao
+import com.example.data.local.dao.UserCorrectionDao
 import com.example.data.repository.MerchantMappingRepositoryImpl
 import com.example.data.security.SecureDatabaseKeyManager
-import com.example.domain.data.NotificationCache
-import com.example.domain.repository.LocationProvider
 import com.example.domain.repository.MerchantMappingRepository
 import dagger.Module
 import dagger.Provides
@@ -93,28 +95,17 @@ object DataModule {
     ): MerchantMappingRepository {
         return MerchantMappingRepositoryImpl(dao)
     }
-/*
-    // CHANGED: @Binds → @Provides
-    @Provides
-    @Singleton
-    fun provideNotificationCache(
-        impl: NotificationCacheImpl
-    ): NotificationCache {
-        return impl
-    }
 
-    // CHANGED: @Binds → @Provides
-    @Provides
-    @Singleton
-    fun provideLocationProvider(
-        impl: LocationProviderImpl
-    ): LocationProvider {
-        return impl
-    }
-*/
     @Provides
     @Singleton
     fun provideUserCorrectionDao(database: AppDatabase): UserCorrectionDao {
         return database.userCorrectionDao()
+    }
+
+
+    @Provides
+    @Singleton
+    fun provideContextSignatureDao(database: AppDatabase): ContextSignatureDao {
+        return database.contextSignatureDao()
     }
 }

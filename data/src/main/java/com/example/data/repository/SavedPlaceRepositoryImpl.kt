@@ -1,6 +1,6 @@
 package com.example.data.repository
 
-import com.example.data.local.SavedPlaceDao
+import com.example.data.local.dao.SavedPlaceDao
 import com.example.domain.model.SavedPlace
 import com.example.domain.repository.SavedPlaceRepository
 import com.example.data.mapper.toDomain

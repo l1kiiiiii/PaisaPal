@@ -1,12 +1,14 @@
-// app/src/main/java/com/example/paisapal/ui/screens/detail/TransactionDetailViewModel.kt
 package com.example.paisapal.ui.screens.detail
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.domain.learning.ContextLearningEngine
+import com.example.domain.model.ContextSnapshot
 import com.example.domain.model.Transaction
 import com.example.domain.repository.TransactionRepository
 import com.example.domain.repository.UserCorrectionRepository
+import com.google.gson.Gson
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -15,8 +17,11 @@ import javax.inject.Inject
 @HiltViewModel
 class TransactionDetailViewModel @Inject constructor(
     private val repository: TransactionRepository,
-    private val userCorrectionRepository: UserCorrectionRepository
+    private val userCorrectionRepository: UserCorrectionRepository,
+    private val learningEngine: ContextLearningEngine
 ) : ViewModel() {
+
+    private val gson = Gson()
 
     private val _transaction = MutableStateFlow<Transaction?>(null)
     val transaction: StateFlow<Transaction?> = _transaction.asStateFlow()
@@ -61,6 +66,33 @@ class TransactionDetailViewModel @Inject constructor(
                     return@launch
                 }
 
+                // Get context data directly as String
+                val contextData = repository.getTransactionContextData(currentTransaction.id)
+
+                // Try to update context signature if context data exists
+                if (!contextData.isNullOrBlank()) {
+                    try {
+                        contextData?.let { data ->
+                            val contextSnapshot = gson.fromJson(
+                                data,
+                                ContextSnapshot::class.java
+                            )
+
+                            learningEngine.updateSignatureFromCorrection(
+                                transactionId = currentTransaction.id,
+                                // Handle nullable category with Elvis operator
+                                oldCategory = currentTransaction.category ?: "Uncategorized",
+                                newCategory = newCategory,
+                                contextSnapshot = contextSnapshot
+                            )
+                            Log.d(TAG, "Context signature updated")
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error updating context signature", e)
+                        // Continue even if context learning fails
+                    }
+                }
+
                 // Update transaction in database
                 val updatedTransaction = currentTransaction.copy(
                     category = newCategory,
@@ -85,24 +117,6 @@ class TransactionDetailViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "Error updating category", e)
                 _error.value = "Failed to update category"
-            }
-        }
-    }
-
-    // Legacy method for backward compatibility (if needed)
-    @Deprecated("Use updateCategory(newCategory) instead", ReplaceWith("updateCategory(newCategory)"))
-    fun updateCategory(transactionId: String, newCategory: String) {
-        if (_transaction.value?.id == transactionId) {
-            updateCategory(newCategory)
-        } else {
-            viewModelScope.launch {
-                try {
-                    repository.updateTransactionCategory(transactionId, newCategory)
-                    Log.d(TAG, "Category updated to: $newCategory")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error updating category", e)
-                    _error.value = "Failed to update category"
-                }
             }
         }
     }

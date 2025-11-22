@@ -30,6 +30,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("debug")
         }
         debug {
             isMinifyEnabled = false
@@ -103,4 +104,5 @@ dependencies {
 
     implementation(libs.play.services.location)
 
+    implementation(libs.gson)
 }

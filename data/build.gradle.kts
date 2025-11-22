@@ -47,5 +47,7 @@ dependencies {
 
     implementation(libs.androidx.sqlite.ktx)
     implementation(libs.androidx.security.crypto)
+
+    implementation(libs.gson)
 }
 

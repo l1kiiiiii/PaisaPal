@@ -1,4 +1,4 @@
-package com.example.data.local
+package com.example.data.local.dao
 
 import androidx.room.*
 import com.example.data.local.entity.MerchantMappingEntity
