@@ -61,6 +61,14 @@ class NotificationMonitorService : NotificationListenerService() {
                 )
 
                 Log.d(TAG, "Payment notification detected: ₹$amount to $merchantName via $packageName")
+
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    android.widget.Toast.makeText(
+                        applicationContext,
+                        "PaisaPal: ₹$amount detected",
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                }
             }
 
         } catch (e: Exception) {

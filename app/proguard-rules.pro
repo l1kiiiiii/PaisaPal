@@ -1,33 +1,20 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# ----------------------------------------------------------------------------
+# APP MODULE RULES
+# ----------------------------------------------------------------------------
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# 1. Keep Domain Data (AppRegistry, NotificationCache)
+# Your code is in 'com.example.domain', NOT 'com.example.paisapal.domain'
+-keep class com.example.domain.data.** { *; }
+-keep class com.example.domain.model.** { *; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
-# Keep domain models
--keep class com.example.paisapal.domain.model.** { *; }
+# 2. Keep Data Implementation (NotificationCacheImpl)
+# Critical for Hilt injection to work in Release
+-keep class com.example.data.cache.** { *; }
 
-# Keep Room entities
--keep class com.example.paisapal.data.local.entity.** { *; }
+# 3. Keep Data Entities (Room)
+-keep class com.example.data.local.entity.** { *; }
 
-# Keep Hilt generated classes
+# 4. Keep Hilt/Dagger (Standard)
 -keep class dagger.hilt.** { *; }
 -keep class javax.inject.** { *; }
-
-# Keep Compose
--keep class androidx.compose.** { *; }

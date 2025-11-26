@@ -123,7 +123,7 @@ fun TransactionDetailScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Icon(
-                            Icons.Default.Error,
+                            Icons.Default.Warning,
                             contentDescription = null,
                             tint = DebitRed,
                             modifier = Modifier.size(64.dp)
