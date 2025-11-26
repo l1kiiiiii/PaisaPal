@@ -43,7 +43,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "MainActivity onCreate")
 
-        // Check initial permissions
         checkPermissions()
 
         setContent {
@@ -57,10 +56,9 @@ class MainActivity : ComponentActivity() {
                     color = Color.Black
                 ) {
                     if (permissionsGranted) {
-                        // Show main app
-                        PaisaPalApp()
+                        // ✅ FIXED: Call MainScreen() instead of PaisaPalApp()
+                        MainScreen()
                     } else {
-                        // Show permission screen
                         PermissionScreen(
                             onRequestPermission = { requestPermissions() }
                         )
@@ -183,40 +181,4 @@ fun PermissionScreen(onRequestPermission: () -> Unit) {
             )
         }
     }
-}
-
-@Composable
-fun LocationPermissionDialog(
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text("Location Permission Required")
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("PaisaPal needs location access to:")
-                Text("• Detect offline payments at physical stores")
-                Text("• Auto-categorize transactions based on your location")
-                Text("• Link payments to saved places")
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "Your location is only used when you make a payment and is never shared with third parties.",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-        },
-        confirmButton = {
-            Button(onClick = onConfirm) {
-                Text("Allow")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Not Now")
-            }
-        }
-    )
 }

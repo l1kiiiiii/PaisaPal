@@ -35,6 +35,10 @@ android {
         debug {
             isMinifyEnabled = false
             isShrinkResources = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 
@@ -51,10 +55,21 @@ android {
         compose = true
     }
 
-
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/LICENSE*"
+            excludes += "/META-INF/NOTICE*"
+        }
+    }
+
+    //  Correct Kotlin DSL syntax for splits
+    splits {
+        abi {
+            isEnable = true  //  enable → isEnable
+            reset()
+            include("armeabi-v7a", "arm64-v8a")
+            isUniversalApk = false  //  universalApk → isUniversalApk
         }
     }
 }
@@ -75,7 +90,9 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material3)
     implementation(libs.compose.navigation)
-    implementation(libs.compose.material.icons.extended)
+    
+    implementation(libs.androidx.compose.material.icons.core)
+
     debugImplementation(libs.compose.ui.tooling)
 
     // Hilt
@@ -94,15 +111,13 @@ dependencies {
     implementation(libs.vico.compose.m3)
     implementation(libs.core)
 
-    // Instrumented Tests (Android tests)
+    // Tests
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)
     androidTestImplementation(libs.compose.ui.tooling)
 
     implementation(libs.javax.inject)
-
     implementation(libs.play.services.location)
-
     implementation(libs.gson)
 }

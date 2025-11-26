@@ -11,6 +11,24 @@ android {
 
     defaultConfig {
         minSdk = 26
+
+        // Consumer ProGuard rules
+        consumerProguardFiles("consumer-rules.pro")
+    }
+
+    buildTypes {
+        // Release build type
+        release {
+            isMinifyEnabled = false  // Libraries shouldn't minify
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+        // Debug build type
+        debug {
+            isMinifyEnabled = false
+        }
     }
 
     compileOptions {
@@ -21,7 +39,17 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+
+    // Packaging options
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/LICENSE*"
+            excludes += "/META-INF/NOTICE*"
+        }
+    }
 }
+
 dependencies {
     implementation(project(":domain"))
 
@@ -35,19 +63,14 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
 
-    // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)
     androidTestImplementation(libs.compose.ui.tooling)
 
     implementation(libs.javax.inject)
-
     implementation(libs.android.database.sqlcipher)
-
     implementation(libs.androidx.sqlite.ktx)
     implementation(libs.androidx.security.crypto)
-
     implementation(libs.gson)
 }
-
