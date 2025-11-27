@@ -1,9 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:tools="http://schemas.android.com/tools"
     xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-permission android:name="android.permission.RECEIVE_SMS" />
-    <uses-permission android:name="android.permission.READ_SMS" />
+
+    <uses-permission
+        android:name="android.permission.RECEIVE_SMS"
+        tools:ignore="ProtectedPermissions" />
+
+    <uses-permission
+        android:name="android.permission.READ_SMS"
+        tools:ignore="ProtectedPermissions" />
+
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="false" />
+
     <application
         android:name=".PaisaPalApp"
         android:allowBackup="true"
@@ -13,7 +25,6 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.PaisaPal">
 
-        <!-- Main Activity -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -24,7 +35,6 @@
             </intent-filter>
         </activity>
 
-        <!-- SMS Receiver -->
         <receiver
             android:name=".receiver.SmsReceiver"
             android:enabled="true"
@@ -35,7 +45,6 @@
             </intent-filter>
         </receiver>
 
-        <!-- Notification Listener Service (for Context Engine) -->
         <service
             android:name=".service.NotificationMonitorService"
             android:enabled="true"
