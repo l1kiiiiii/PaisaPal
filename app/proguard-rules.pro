@@ -1,17 +1,34 @@
-# ===========================================
-# NOTIFICATION LISTENER - CRITICAL
-# ===========================================
--keep public class * extends android.service.notification.NotificationListenerService {
-    public void onNotificationPosted(android.service.notification.StatusBarNotification);
-    public void onNotificationRemoved(android.service.notification.StatusBarNotification);
-    public void onListenerConnected();
-    public void onListenerDisconnected();
-}
+# ============================================================================
+# APP MODULE - KEEP RULES
+# ============================================================================
+# Purpose: Protect Android entry points (Activities, Receivers, Services).
+# Package structure: com.example.paisapal.*
 
-# Keep the Service itself
--keep class com.example.paisapal.service.NotificationMonitorService { *; }
+# 1. Keep Critical Broadcast Receivers
+# The SmsReceiver is instantiated by the system via Manifest.
+-keep class com.example.paisapal.receiver.SmsReceiver { *; }
 
-# Keep Android Notification classes used in the service
+# 2. Keep Services
+# NotificationMonitorService and others.
+-keep class com.example.paisapal.service.** { *; }
+
+# 3. Keep Utility Classes used in Background work
+# SmsReader is used via Hilt injection.
+-keep class com.example.paisapal.util.SmsReader { *; }
+-keep class com.example.paisapal.worker.** { *; }
+
+# 4. Hilt / Dependency Injection Safety
+# Generally handled by Hilt's own rules, but these ensure your specific injection points exist.
+-keep class com.example.paisapal.di.** { *; }
+
+# 5. Android Standard Components
+-keep public class * extends android.app.Activity
+-keep public class * extends android.app.Application
+-keep public class * extends android.app.Service
+-keep public class * extends android.content.BroadcastReceiver
+-keep public class * extends android.content.ContentProvider
+
+# 6. Keep Android Notification classes (from your original file)
 -keep class android.service.notification.StatusBarNotification {
     public android.app.Notification getNotification();
     public java.lang.String getPackageName();
@@ -23,21 +40,3 @@
 -keep class android.os.Bundle {
     public java.lang.CharSequence getCharSequence(java.lang.String);
 }
-
-# ===========================================
-# DOMAIN & DATA CLASSES (CORRECTED PACKAGES)
-# ===========================================
-# Fix: Removed ".paisapal" from these paths to match your actual file structure
-
--keep class com.example.domain.data.AppRegistry { *; }
--keep class com.example.domain.data.NotificationCache { *; }
-
-# Keep the Implementation so Hilt can inject it
--keep class com.example.data.cache.NotificationCacheImpl { *; }
-
-# Keep Domain Models & Engines
--keep class com.example.domain.model.** { *; }
--keep class com.example.domain.engine.** { *; }
-
-# Keep Room Entities
--keep class com.example.data.local.entity.** { *; }
