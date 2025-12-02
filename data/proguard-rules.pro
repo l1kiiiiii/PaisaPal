@@ -1,10 +1,10 @@
 # ----------------------------------------------------------------------------
-# DATA MODULE INTERNAL RULES
+# DATA MODULE INTERNAL RULES (for library itself)
 # ----------------------------------------------------------------------------
-# These rules apply when the Data module code is being shrunk.
+# Keep all data classes
+-keep class com.example.data.** { *; }
 
-# Keep internal mappers that might use reflection
--keep class com.example.paisapal.data.mapper.** { *; }
-
-# Keep Room entities for internal database operations
--keep class com.example.paisapal.data.local.entity.** { *; }
+# Room - Keep generated implementations
+-keep class * extends androidx.room.RoomDatabase
+-keep @androidx.room.Entity class *
+-dontwarn androidx.room.paging.**

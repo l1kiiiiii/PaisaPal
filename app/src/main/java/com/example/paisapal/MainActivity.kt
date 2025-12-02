@@ -1,8 +1,10 @@
 package com.example.paisapal
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -25,51 +27,100 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    private val _hasPermissions = mutableStateOf(false)
-    private val hasPermissions: Boolean
-        get() = _hasPermissions.value
+    private val _hasSmsPermissions = mutableStateOf(false)
+    private val _hasNotificationAccess = mutableStateOf(false)
 
-    private val permissionLauncher = registerForActivityResult(
+    private enum class PermissionStep {
+        SMS_PERMISSION,
+        NOTIFICATION_ACCESS,
+        ALL_GRANTED
+    }
+
+    private val currentStep = mutableStateOf(PermissionStep.SMS_PERMISSION)
+
+    // SMS Permission Launcher
+    private val smsPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val granted = permissions[Manifest.permission.RECEIVE_SMS] == true &&
                 permissions[Manifest.permission.READ_SMS] == true
 
-        Log.d(TAG, "Permissions granted: $granted")
-        _hasPermissions.value = granted
+        Log.d(TAG, "SMS Permissions granted: $granted")
+        _hasSmsPermissions.value = granted
+
+        if (granted) {
+            currentStep.value = PermissionStep.NOTIFICATION_ACCESS
+        }
+    }
+
+    // Notification Settings Launcher
+    private val notificationSettingsLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        val hasAccess = hasNotificationAccess()
+        _hasNotificationAccess.value = hasAccess
+
+        if (hasAccess) {
+            currentStep.value = PermissionStep.ALL_GRANTED
+        }
+
+        Log.d(TAG, "Notification Access granted: $hasAccess")
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "MainActivity onCreate")
 
-        checkPermissions()
+        checkAllPermissions()
 
         setContent {
             PaisaPalTheme {
-                val permissionsGranted = _hasPermissions.value
-
-                Log.d(TAG, "Recomposing with permissions: $permissionsGranted")
+                val step by remember { currentStep }
+                val hasSms by remember { _hasSmsPermissions }
+                val hasNotif by remember { _hasNotificationAccess }
 
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = Color.Black
                 ) {
-                    if (permissionsGranted) {
-                        // ✅ FIXED: Call MainScreen() instead of PaisaPalApp()
-                        MainScreen()
-                    } else {
-                        PermissionScreen(
-                            onRequestPermission = { requestPermissions() }
-                        )
+                    when {
+                        step == PermissionStep.ALL_GRANTED && hasSms && hasNotif -> {
+                            MainScreen()
+                        }
+                        step == PermissionStep.SMS_PERMISSION || !hasSms -> {
+                            SmsPermissionScreen(
+                                onRequestPermission = { requestSmsPermissions() }
+                            )
+                        }
+                        step == PermissionStep.NOTIFICATION_ACCESS || !hasNotif -> {
+                            NotificationAccessScreen(
+                                onRequestPermission = { requestNotificationAccess() }
+                            )
+                        }
+                        else -> {
+                            MainScreen()
+                        }
                     }
                 }
             }
         }
     }
 
-    private fun checkPermissions() {
-        val granted = ContextCompat.checkSelfPermission(
+    override fun onResume() {
+        super.onResume()
+        // Recheck notification access when returning from settings
+        if (_hasSmsPermissions.value) {
+            val hasAccess = hasNotificationAccess()
+            _hasNotificationAccess.value = hasAccess
+            if (hasAccess && currentStep.value == PermissionStep.NOTIFICATION_ACCESS) {
+                currentStep.value = PermissionStep.ALL_GRANTED
+            }
+        }
+    }
+
+    private fun checkAllPermissions() {
+        // Check SMS permissions
+        val hasSms = ContextCompat.checkSelfPermission(
             this,
             Manifest.permission.RECEIVE_SMS
         ) == PackageManager.PERMISSION_GRANTED &&
@@ -78,18 +129,45 @@ class MainActivity : ComponentActivity() {
                     Manifest.permission.READ_SMS
                 ) == PackageManager.PERMISSION_GRANTED
 
-        Log.d(TAG, "Initial permission check: $granted")
-        _hasPermissions.value = granted
+        _hasSmsPermissions.value = hasSms
+        Log.d(TAG, "SMS permission check: $hasSms")
+
+        // Check Notification Access
+        val hasNotif = hasNotificationAccess()
+        _hasNotificationAccess.value = hasNotif
+        Log.d(TAG, "Notification access check: $hasNotif")
+
+        // Determine current step
+        currentStep.value = when {
+            !hasSms -> PermissionStep.SMS_PERMISSION
+            !hasNotif -> PermissionStep.NOTIFICATION_ACCESS
+            else -> PermissionStep.ALL_GRANTED
+        }
     }
 
-    private fun requestPermissions() {
-        Log.d(TAG, "Requesting permissions")
-        permissionLauncher.launch(
+    private fun hasNotificationAccess(): Boolean {
+        val enabledListeners = Settings.Secure.getString(
+            contentResolver,
+            "enabled_notification_listeners"
+        )
+        val packageName = packageName
+        return enabledListeners?.contains(packageName) == true
+    }
+
+    private fun requestSmsPermissions() {
+        Log.d(TAG, "Requesting SMS permissions")
+        smsPermissionLauncher.launch(
             arrayOf(
                 Manifest.permission.RECEIVE_SMS,
                 Manifest.permission.READ_SMS
             )
         )
+    }
+
+    private fun requestNotificationAccess() {
+        Log.d(TAG, "Opening Notification Access settings")
+        val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+        notificationSettingsLauncher.launch(intent)
     }
 
     companion object {
@@ -98,7 +176,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun PermissionScreen(onRequestPermission: () -> Unit) {
+fun SmsPermissionScreen(onRequestPermission: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -108,7 +186,7 @@ fun PermissionScreen(onRequestPermission: () -> Unit) {
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "📱",
+            text = "💬",
             fontSize = 64.sp,
             color = Color.White
         )
@@ -174,7 +252,135 @@ fun PermissionScreen(onRequestPermission: () -> Unit) {
             )
         ) {
             Text(
-                text = "Grant Permission",
+                text = "Grant SMS Permission",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+        }
+    }
+}
+
+@Composable
+fun NotificationAccessScreen(onRequestPermission: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "🔔",
+            fontSize = 64.sp,
+            color = Color.White
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "Notification Access Required",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "PaisaPal needs to read payment app notifications to track UPI transactions in real-time.",
+            fontSize = 16.sp,
+            textAlign = TextAlign.Center,
+            color = Color(0xFFAAAAAA),
+            lineHeight = 24.sp
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = Color(0xFF1A1A1A)
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    "✓ Tracks GPay, PhonePe, Paytm",
+                    fontSize = 14.sp,
+                    color = Color(0xFF00C853)
+                )
+                Text(
+                    "✓ Reads only payment notifications",
+                    fontSize = 14.sp,
+                    color = Color(0xFF00C853)
+                )
+                Text(
+                    "✓ Private & secure on your device",
+                    fontSize = 14.sp,
+                    color = Color(0xFF00C853)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = Color(0xFF2D2D2D)
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    "How to Enable:",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Text(
+                    "1. Tap the button below",
+                    fontSize = 13.sp,
+                    color = Color(0xFFCCCCCC)
+                )
+                Text(
+                    "2. Find 'PaisaPal' in the list",
+                    fontSize = 13.sp,
+                    color = Color(0xFFCCCCCC)
+                )
+                Text(
+                    "3. Toggle the switch ON",
+                    fontSize = 13.sp,
+                    color = Color(0xFFCCCCCC)
+                )
+                Text(
+                    "4. Return to PaisaPal",
+                    fontSize = 13.sp,
+                    color = Color(0xFFCCCCCC)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Button(
+            onClick = onRequestPermission,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF00C853)
+            )
+        ) {
+            Text(
+                text = "Open Settings",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White

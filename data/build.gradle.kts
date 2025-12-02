@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.paisapal.data"
+    namespace = "com.example.data"
     compileSdk = 36
 
     defaultConfig {

@@ -4,6 +4,7 @@ import com.example.domain.data.NotificationCache
 import com.example.domain.data.PaymentNotification
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.abs
 
 @Singleton
 class NotificationCacheImpl @Inject constructor() : NotificationCache {
@@ -16,12 +17,20 @@ class NotificationCacheImpl @Inject constructor() : NotificationCache {
         amount: Double,
         merchantName: String?,
         packageName: String,
+        appName: String,
+        fullText: String,
         timestamp: Long
     ) {
         synchronized(cache) {
-            cache.add(PaymentNotification(amount, merchantName, packageName, timestamp))
-            cache.removeAll { System.currentTimeMillis() - it.timestamp > retentionMs }
-            if (cache.size > maxSize) cache.removeAt(0)
+            cache.add(0, PaymentNotification(
+                amount, merchantName, packageName, appName, fullText, timestamp
+            ))
+
+            val now = System.currentTimeMillis()
+            cache.removeAll { now - it.timestamp > retentionMs }
+            if (cache.size > maxSize) {
+                cache.subList(maxSize, cache.size).clear()
+            }
         }
     }
 
@@ -32,9 +41,15 @@ class NotificationCacheImpl @Inject constructor() : NotificationCache {
     ): PaymentNotification? {
         synchronized(cache) {
             return cache
-                .filter { kotlin.math.abs(it.amount - amount) <= 1.0 }
-                .filter { kotlin.math.abs(it.timestamp - timestamp) <= timeWindowMs }
-                .minByOrNull { kotlin.math.abs(it.timestamp - timestamp) }
+                .filter { abs(it.amount - amount) <= 1.0 }
+                .filter { abs(it.timestamp - timestamp) <= timeWindowMs }
+                .minByOrNull { abs(it.timestamp - timestamp) }
+        }
+    }
+
+    override fun getRecentNotifications(limit: Int): List<PaymentNotification> {
+        synchronized(cache) {
+            return cache.take(limit)
         }
     }
 
