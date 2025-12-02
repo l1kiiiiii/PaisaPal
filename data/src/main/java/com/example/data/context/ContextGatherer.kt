@@ -6,17 +6,19 @@ import com.example.data.remote.BluetoothManager
 import com.example.data.settings.SensorSettings
 import com.example.data.system.AppUsageTracker
 import com.example.data.system.LocationProvider
-import com.example.data.system.NotificationCache
+import com.example.domain.data.NotificationCache  //  Now an interface
 import com.example.domain.model.ContextSnapshot
 import kotlinx.coroutines.*
+import javax.inject.Inject
 
-class ContextGatherer(
+class ContextGatherer @Inject constructor(  //  Added @Inject for Hilt
     private val context: Context,
     private val bluetoothManager: BluetoothManager,
     private val appUsageTracker: AppUsageTracker,
     private val locationProvider: LocationProvider,
     private val permissionManager: PermissionManager,
-    private val sensorSettings: SensorSettings
+    private val sensorSettings: SensorSettings,
+    private val notificationCache: NotificationCache  //  Inject the interface
 ) {
 
     suspend fun gatherContext(
@@ -50,8 +52,11 @@ class ContextGatherer(
         val notificationDeferred = async {
             if (permissions.notificationListener && sensorSettings.isNotificationEnabled()) {
                 withTimeoutOrNull(500L) {
-                    NotificationCache.getRecentNotifications(timestamp, 60_000L)
-                        .firstOrNull()?.text
+                    //   Use injected cache and correct field name
+                    notificationCache.getRecentNotifications(50)
+                        .firstOrNull {
+                            kotlin.math.abs(it.timestamp - timestamp) <= 60_000L
+                        }?.fullText  //  Use 'fullText' instead of 'text'
                 }
             } else null
         }

@@ -9,6 +9,7 @@ import com.example.data.service.TransactionProcessingService
 import com.example.data.settings.SensorSettings
 import com.example.data.system.AppUsageTracker
 import com.example.data.system.LocationProvider
+import com.example.domain.data.NotificationCache
 import com.example.domain.engine.ContextAwareCategorizer
 import dagger.Module
 import dagger.Provides
@@ -69,7 +70,8 @@ object ContextProcessingModule {
         appUsageTracker: AppUsageTracker,
         locationProvider: LocationProvider,
         permissionManager: PermissionManager,
-        sensorSettings: SensorSettings
+        sensorSettings: SensorSettings,
+        notificationCache: NotificationCache  // ✅ Add this parameter
     ): ContextGatherer {
         return ContextGatherer(
             context = context,
@@ -77,7 +79,8 @@ object ContextProcessingModule {
             appUsageTracker = appUsageTracker,
             locationProvider = locationProvider,
             permissionManager = permissionManager,
-            sensorSettings = sensorSettings
+            sensorSettings = sensorSettings,
+            notificationCache = notificationCache  // ✅ Pass it to constructor
         )
     }
 
