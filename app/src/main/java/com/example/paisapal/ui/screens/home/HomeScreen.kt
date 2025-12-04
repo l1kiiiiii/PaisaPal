@@ -48,7 +48,6 @@ import com.example.paisapal.ui.components.CompactTopBar
 import com.example.paisapal.ui.theme.BackgroundDark
 import com.example.paisapal.ui.theme.CreditGreen
 import com.example.paisapal.ui.theme.DebitRed
-import com.example.paisapal.ui.theme.PrimaryBlue
 import com.example.paisapal.ui.theme.PrimaryGreen
 import com.example.paisapal.ui.theme.SurfaceDark
 import com.example.paisapal.ui.theme.SurfaceLighter
