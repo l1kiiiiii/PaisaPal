@@ -3,6 +3,7 @@ package com.example.paisapal.ui.screens.home
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.domain.data.NotificationCache
 import com.example.domain.model.Transaction
 import com.example.domain.model.TransactionType
 import com.example.domain.repository.TransactionRepository
@@ -16,7 +17,8 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repository: TransactionRepository,
-    private val getBudgetSummaryUseCase: GetBudgetSummaryUseCase
+    private val getBudgetSummaryUseCase: GetBudgetSummaryUseCase,
+    private val notificationCache: NotificationCache
 ) : ViewModel() {
 
     private val _transactions = MutableStateFlow<List<Transaction>>(emptyList())

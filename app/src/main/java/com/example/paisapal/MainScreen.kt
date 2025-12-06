@@ -2,6 +2,8 @@ package com.example.paisapal
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -14,25 +16,33 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.paisapal.ui.navigation.bottomNavItems
 import com.example.paisapal.ui.screens.budget.BudgetScreen
-import com.example.paisapal.ui.screens.categorize.CategorizeScreen  //  ADD THIS
+import com.example.paisapal.ui.screens.categorize.CategorizeScreen
 import com.example.paisapal.ui.screens.detail.TransactionDetailScreen
 import com.example.paisapal.ui.screens.home.HomeScreen
 import com.example.paisapal.ui.screens.insights.InsightsScreen
+import com.example.paisapal.ui.screens.notification.NotificationDebugScreen
 import com.example.paisapal.ui.screens.review.ReviewScreen
 import com.example.paisapal.ui.screens.settings.SettingsScreen
 import com.example.paisapal.ui.theme.PrimaryBlue
 
+import androidx.compose.ui.tooling.preview.Preview
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    // ✅ ADD: State for Quick Add Dialog
+    var showQuickAddDialog by remember { mutableStateOf(false) }
+
     // Routes without bottom bar
     val navWithoutBottomBar = listOf(
         "import_sms",
         "transaction_detail/{transactionId}",
-        "categorize/{transactionId}"  //  ADD THIS
+        "categorize/{transactionId}",
+        "notification_debug"
     )
 
     val showBottomBar = navWithoutBottomBar.none { route ->
@@ -40,7 +50,7 @@ fun MainScreen() {
     }
 
     BackHandler(enabled = currentRoute != "home") {
-        if (currentRoute in listOf("review", "budget", "insights", "settings")) {
+        if (currentRoute in listOf("review", "budget", "insights", "settings", "notification_debug")) {
             navController.navigate("home") {
                 popUpTo("home") { inclusive = true }
             }
@@ -51,6 +61,7 @@ fun MainScreen() {
 
     Scaffold(
         containerColor = Color.Black,
+        // ❌ REMOVED: topBar with "PaisaPal" title
         bottomBar = {
             if (showBottomBar) {
                 PaisaPalBottomNavigation(
@@ -65,6 +76,20 @@ fun MainScreen() {
                         }
                     }
                 )
+            }
+        },
+        floatingActionButton = {
+            if (currentRoute == "home") {
+                FloatingActionButton(
+                    onClick = { showQuickAddDialog = true },
+                    containerColor = PrimaryBlue
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Quick Add Transaction",
+                        tint = Color.White
+                    )
+                }
             }
         }
     ) { paddingValues ->
@@ -82,7 +107,9 @@ fun MainScreen() {
                     },
                     onReviewClick = {
                         navController.navigate("review")
-                    }
+                    },
+                    showQuickAddDialog = showQuickAddDialog,              // ✅ PASS STATE
+                    onDismissQuickAdd = { showQuickAddDialog = false }    // ✅ PASS CALLBACK
                 )
             }
 
@@ -101,6 +128,14 @@ fun MainScreen() {
             composable("settings") {
                 SettingsScreen()
             }
+
+            composable("notification_debug") {
+                NotificationDebugScreen(
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            // ❌ REMOVED: "add_manual_transaction" route and ManualTransactionPlaceholder
 
             // ===== DETAIL SCREENS =====
 
@@ -121,7 +156,6 @@ fun MainScreen() {
                         onBackClick = {
                             navController.popBackStack()
                         },
-                        //   Navigate to categorize screen
                         onCategorizeClick = {
                             navController.navigate("categorize/$transactionId")
                         }
@@ -135,7 +169,6 @@ fun MainScreen() {
                 }
             }
 
-            //   Categorize Screen Route
             composable(
                 route = "categorize/{transactionId}",
                 arguments = listOf(
@@ -154,7 +187,6 @@ fun MainScreen() {
                             navController.popBackStack()
                         },
                         onCategorizeComplete = { category ->
-                            // Return to detail screen with success
                             navController.previousBackStackEntry
                                 ?.savedStateHandle
                                 ?.set("categorized", category)
@@ -169,6 +201,20 @@ fun MainScreen() {
             }
         }
     }
+}
+
+@Preview
+@Composable
+fun MainScreenPreview() {
+    MainScreen()
+}
+
+@Preview
+@Composable
+fun PaisaPalBottomNavigationPreview() {
+    PaisaPalBottomNavigation(
+        currentRoute = "home",
+        onNavigate = {})
 }
 
 @Composable

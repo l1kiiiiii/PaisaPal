@@ -17,14 +17,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -48,7 +46,6 @@ import com.example.paisapal.ui.components.CompactTopBar
 import com.example.paisapal.ui.theme.BackgroundDark
 import com.example.paisapal.ui.theme.CreditGreen
 import com.example.paisapal.ui.theme.DebitRed
-import com.example.paisapal.ui.theme.PrimaryBlue
 import com.example.paisapal.ui.theme.PrimaryGreen
 import com.example.paisapal.ui.theme.SurfaceDark
 import com.example.paisapal.ui.theme.SurfaceLighter
@@ -66,27 +63,20 @@ import java.util.UUID
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
     onTransactionClick: (Transaction) -> Unit = {},
-    onReviewClick: () -> Unit = {}
+    onReviewClick: () -> Unit = {},
+    showQuickAddDialog: Boolean = false,
+    onDismissQuickAdd: () -> Unit = {},
+    onNotificationClick: () -> Unit = {}  // ✅ ADDED
 ) {
     val smartFeedItems by viewModel.smartFeedItems.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
-    // ADD: Dialog state
-    var showQuickAddDialog by remember { mutableStateOf(false) }
-
     Scaffold(
-        topBar = { CompactTopBar("Home", onSettingsClick = {}) },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showQuickAddDialog = true },
-                containerColor = PrimaryGreen
-            ) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = "Quick Add",
-                    tint = Color.White
-                )
-            }
+        topBar = {
+            CompactTopBar(
+                title = "Home",
+                onNotificationClick = onNotificationClick  // ✅ FIXED
+            )
         }
     ) { paddingValues ->
         Column(
@@ -142,17 +132,18 @@ fun HomeScreen(
         }
     }
 
-    // ADD: Quick Add Dialog
+    // ✅ Dialog controlled by parent
     if (showQuickAddDialog) {
         QuickAddDialog(
-            onDismiss = { showQuickAddDialog = false },
+            onDismiss = onDismissQuickAdd,
             onConfirm = { transaction ->
                 viewModel.addManualTransaction(transaction)
-                showQuickAddDialog = false
+                onDismissQuickAdd()
             }
         )
     }
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QuickAddDialog(

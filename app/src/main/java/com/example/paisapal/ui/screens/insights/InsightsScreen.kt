@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.paisapal.ui.components.CompactTopBar
 import com.example.paisapal.ui.theme.*
@@ -107,6 +108,56 @@ fun InsightsScreen(
             }
         }
     }
+}
+
+@Preview
+@Composable
+fun TimeFrameSelectorPreview() {
+    TimeFrameSelector(
+        selectedTimeFrame = TimeFrame.MONTHLY,
+        onTimeFrameChange = {}
+    )
+}
+
+@Preview
+@Composable
+fun ChartCardPreview() {
+    ChartCard(title = "Sample Chart") {
+        Text("Chart Content Placeholder", color = Color.White)
+    }
+}
+
+@Preview
+@Composable
+fun CategoryBarChartPreview() {
+    val data = listOf(
+        CategorySpending("Food", 500.0),
+        CategorySpending("Transport", 300.0),
+        CategorySpending("Entertainment", 200.0)
+    )
+    CategoryBarChart(data = data)
+}
+
+@Preview
+@Composable
+fun DailyLineChartPreview() {
+    val data = listOf(
+        DailySpending("2023-10-01", 100.0),
+        DailySpending("2023-10-02", 150.0),
+        DailySpending("2023-10-03", 50.0)
+    )
+    DailyLineChart(data = data)
+}
+
+@Preview
+@Composable
+fun CategoryBreakdownListPreview() {
+    val categories = listOf(
+        CategorySpending("Groceries", 1200.50),
+        CategorySpending("Rent", 15000.00),
+        CategorySpending("Utilities", 2500.00)
+    )
+    CategoryBreakdownList(categories = categories)
 }
 
 @Composable

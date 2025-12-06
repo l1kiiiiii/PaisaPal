@@ -4,7 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -19,17 +19,16 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun CompactTopBar(
     title: String,
-    showSettings: Boolean = true,
+    showNotifications: Boolean = true,
     showBackButton: Boolean = false,
     onBackClick: () -> Unit = {},
-    onSettingsClick: () -> Unit = {}
+    onNotificationClick: () -> Unit = {}
 ) {
-    //  Remove statusBarsPadding to lower the bar
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.Black)  //  Black, not green
-            .padding(horizontal = 16.dp, vertical = 12.dp),  //  Reduced padding
+            .background(Color.Black)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -55,20 +54,20 @@ fun CompactTopBar(
         Text(
             title,
             color = Color.White,
-            fontSize = 20.sp,  //  Slightly larger
+            fontSize = 20.sp,
             fontWeight = FontWeight.Bold
         )
 
-        // Right side
-        if (showSettings) {
+        // Right side - Notification Icon
+        if (showNotifications) {
             IconButton(
-                onClick = onSettingsClick,
+                onClick = onNotificationClick,
                 modifier = Modifier.size(40.dp)
             ) {
                 Icon(
-                    Icons.Default.Settings,
-                    contentDescription = "Settings",
-                    tint = Color.White,
+                    Icons.Default.Notifications,
+                    contentDescription = "Notifications",
+                    tint = Color(0xFF2196F3),  // Blue color
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -77,4 +76,3 @@ fun CompactTopBar(
         }
     }
 }
-
