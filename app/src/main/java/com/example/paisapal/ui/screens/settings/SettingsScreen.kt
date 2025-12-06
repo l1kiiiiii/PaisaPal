@@ -46,7 +46,7 @@ fun SettingsScreen(
     }
 
     Scaffold(
-        topBar = { CompactTopBar("Settings", showSettings = false) }
+        topBar = { CompactTopBar("Settings", showNotifications  = false) }
     ) { paddingValues ->
         Column(
             modifier = Modifier

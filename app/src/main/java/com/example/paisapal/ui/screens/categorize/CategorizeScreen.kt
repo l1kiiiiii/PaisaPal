@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -90,6 +91,16 @@ fun CategorizeScreen(
     }
 }
 
+@Preview
+@Composable
+fun CategorizeScreenPreview() {
+    CategorizeScreen(
+        transactionId = "123",
+        onBackClick = {},
+        onCategorizeComplete = {}
+    )
+}
+
 @Composable
 private fun CategoryCard(
     category: String,
@@ -122,4 +133,14 @@ private fun CategoryCard(
             )
         }
     }
+}
+
+@Preview
+@Composable
+fun CategoryCardPreview() {
+    CategoryCard(
+        category = "Food & Dining",
+        emoji = "🍔",
+        onClick = {}
+    )
 }

@@ -1,22 +1,13 @@
 package com.example.paisapal
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -34,6 +25,8 @@ import com.example.paisapal.ui.screens.review.ReviewScreen
 import com.example.paisapal.ui.screens.settings.SettingsScreen
 import com.example.paisapal.ui.theme.PrimaryBlue
 
+import androidx.compose.ui.tooling.preview.Preview
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
@@ -41,13 +34,15 @@ fun MainScreen() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    // ✅ ADD: State for Quick Add Dialog
+    var showQuickAddDialog by remember { mutableStateOf(false) }
+
     // Routes without bottom bar
     val navWithoutBottomBar = listOf(
         "import_sms",
         "transaction_detail/{transactionId}",
         "categorize/{transactionId}",
-        "notification_debug",
-        "add_manual_transaction"
+        "notification_debug"
     )
 
     val showBottomBar = navWithoutBottomBar.none { route ->
@@ -55,7 +50,7 @@ fun MainScreen() {
     }
 
     BackHandler(enabled = currentRoute != "home") {
-        if (currentRoute in listOf("review", "budget", "insights", "settings", "notification_debug", "add_manual_transaction")) {
+        if (currentRoute in listOf("review", "budget", "insights", "settings", "notification_debug")) {
             navController.navigate("home") {
                 popUpTo("home") { inclusive = true }
             }
@@ -66,32 +61,7 @@ fun MainScreen() {
 
     Scaffold(
         containerColor = Color.Black,
-        topBar = {
-            if (currentRoute == "home") {
-                // ✅ TopAppBar with Notification Icon (Right)
-                TopAppBar(
-                    title = {
-                        Text(
-                            text = "PaisaPal",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
-                    actions = {
-                        IconButton(onClick = { navController.navigate("notification_debug") }) {
-                            Icon(
-                                Icons.Default.Notifications,
-                                contentDescription = "View Notifications",
-                                tint = PrimaryBlue
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color(0xFF1A1A1A)
-                    )
-                )
-            }
-        },
+        // ❌ REMOVED: topBar with "PaisaPal" title
         bottomBar = {
             if (showBottomBar) {
                 PaisaPalBottomNavigation(
@@ -110,14 +80,13 @@ fun MainScreen() {
         },
         floatingActionButton = {
             if (currentRoute == "home") {
-                // ✅ FAB for Manual Add Transaction (Blue)
                 FloatingActionButton(
-                    onClick = { navController.navigate("add_manual_transaction") },
+                    onClick = { showQuickAddDialog = true },
                     containerColor = PrimaryBlue
                 ) {
                     Icon(
                         Icons.Default.Add,
-                        contentDescription = "Add Manual Transaction",
+                        contentDescription = "Quick Add Transaction",
                         tint = Color.White
                     )
                 }
@@ -138,7 +107,9 @@ fun MainScreen() {
                     },
                     onReviewClick = {
                         navController.navigate("review")
-                    }
+                    },
+                    showQuickAddDialog = showQuickAddDialog,              // ✅ PASS STATE
+                    onDismissQuickAdd = { showQuickAddDialog = false }    // ✅ PASS CALLBACK
                 )
             }
 
@@ -164,18 +135,7 @@ fun MainScreen() {
                 )
             }
 
-            // ✅ Add Manual Transaction Screen Route
-            composable("add_manual_transaction") {
-                // TODO: Create ManualTransactionScreen composable
-                // For now, use a placeholder screen
-                ManualTransactionPlaceholder(
-                    onSave = {
-                        // TODO: Save transaction via ViewModel/repository
-                        navController.popBackStack()
-                    },
-                    onBackClick = { navController.popBackStack() }
-                )
-            }
+            // ❌ REMOVED: "add_manual_transaction" route and ManualTransactionPlaceholder
 
             // ===== DETAIL SCREENS =====
 
@@ -243,46 +203,18 @@ fun MainScreen() {
     }
 }
 
-// ✅ TEMPORARY PLACEHOLDER - Replace with real ManualTransactionScreen
-@OptIn(ExperimentalMaterial3Api::class)
+@Preview
 @Composable
-private fun ManualTransactionPlaceholder(
-    onSave: () -> Unit,
-    onBackClick: () -> Unit
-) {
-    Scaffold(
-        containerColor = Color.Black,
-        topBar = {
-            TopAppBar(
-                title = { Text("Add Transaction", color = Color.White) },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF1A1A1A))
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text("Manual Transaction Screen", color = Color.White, fontSize = 24.sp)
-            Text("TODO: Implement form fields", color = Color.Gray)
-            Button(
-                onClick = onSave,
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                modifier = Modifier.padding(top = 16.dp)
-            ) {
-                Text("Save (Placeholder)", color = Color.White)
-            }
-        }
-    }
+fun MainScreenPreview() {
+    MainScreen()
+}
+
+@Preview
+@Composable
+fun PaisaPalBottomNavigationPreview() {
+    PaisaPalBottomNavigation(
+        currentRoute = "home",
+        onNavigate = {})
 }
 
 @Composable
