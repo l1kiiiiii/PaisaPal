@@ -10,6 +10,7 @@ import com.example.data.local.dao.MerchantMappingDao
 import com.example.data.local.dao.NotificationCacheDao
 import com.example.data.local.dao.SavedPlaceDao
 import com.example.data.local.dao.TransactionDao
+import com.example.data.local.dao.UserAccountDao
 import com.example.data.local.dao.UserCorrectionDao
 import com.example.data.repository.MerchantMappingRepositoryImpl
 import com.example.data.security.SecureDatabaseKeyManager
@@ -107,5 +108,11 @@ object DataModule {
     @Singleton
     fun provideContextSignatureDao(database: AppDatabase): ContextSignatureDao {
         return database.contextSignatureDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideUserAccountDao(database: AppDatabase): UserAccountDao {
+        return database.userAccountDao()
     }
 }

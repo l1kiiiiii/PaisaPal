@@ -24,6 +24,7 @@ import com.example.paisapal.ui.theme.*
 @Composable
 fun SettingsScreen(
     onBackClick: () -> Unit = {},
+    onNavigateToAccounts: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -46,7 +47,7 @@ fun SettingsScreen(
     }
 
     Scaffold(
-        topBar = { CompactTopBar("Settings", showNotifications  = false) }
+        topBar = { CompactTopBar("Settings", showNotifications = false) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -62,6 +63,15 @@ fun SettingsScreen(
                 hasPermission = hasNotificationPermission,
                 onRequestPermission = { openNotificationSettings(context) }
             )
+
+            //  ACCOUNTS SECTION
+            SettingsSection(title = "Accounts") {
+                SettingsItem(
+                    label = "My Accounts",
+                    subtitle = "Manage bank account numbers",
+                    onClick = onNavigateToAccounts
+                )
+            }
 
             // Data Section
             SettingsSection(title = "Data") {
@@ -223,6 +233,7 @@ private fun SettingsSection(
 @Composable
 private fun SettingsItem(
     label: String,
+    subtitle: String? = null,
     onClick: () -> Unit,
     isDestructive: Boolean = false,
     isLoading: Boolean = false
@@ -234,11 +245,21 @@ private fun SettingsItem(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            label,
-            color = if (isDestructive) DebitRed else TextWhite,
-            fontSize = 16.sp
-        )
+        Column(modifier = Modifier.weight(1f)) {  // WRAP IN COLUMN
+            Text(
+                label,
+                color = if (isDestructive) DebitRed else TextWhite,
+                fontSize = 16.sp
+            )
+            if (subtitle != null) {  // SHOW SUBTITLE IF PROVIDED
+                Text(
+                    subtitle,
+                    color = TextGray,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+        }
 
         if (isLoading) {
             CircularProgressIndicator(
