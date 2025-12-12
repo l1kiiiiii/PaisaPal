@@ -109,8 +109,8 @@ fun MainScreen() {
                     onReviewClick = {
                         navController.navigate("review")
                     },
-                    showQuickAddDialog = showQuickAddDialog,              // ✅ PASS STATE
-                    onDismissQuickAdd = { showQuickAddDialog = false }    // ✅ PASS CALLBACK
+                    showQuickAddDialog = showQuickAddDialog,              //  PASS STATE
+                    onDismissQuickAdd = { showQuickAddDialog = false }    //  PASS CALLBACK
                 )
             }
 

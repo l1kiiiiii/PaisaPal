@@ -1,6 +1,8 @@
 package com.example.paisapal.ui.screens.detail
 
 import android.content.Intent
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,7 +31,7 @@ import java.util.*
 fun TransactionDetailScreen(
     transactionId: String,
     onBackClick: () -> Unit,
-    onCategorizeClick: () -> Unit = {},  // ✅ ADD THIS
+    onCategorizeClick: () -> Unit = {},
     viewModel: TransactionDetailViewModel = hiltViewModel()
 ) {
     val transaction by viewModel.transaction.collectAsState()
@@ -40,9 +42,6 @@ fun TransactionDetailScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showCategoryDialog by remember { mutableStateOf(false) }
     var showSmsDialog by remember { mutableStateOf(false) }
-
-    // ✅ REMOVED: navController access - not available here
-    // This will be handled in MainScreen navigation
 
     LaunchedEffect(transactionId) {
         viewModel.loadTransaction(transactionId)
@@ -183,7 +182,7 @@ private fun TransactionDetailContent(
     transaction: Transaction,
     onCategoryClick: () -> Unit,
     onViewSmsClick: () -> Unit,
-    onEditCategoryClick: () -> Unit  // ✅ ADD THIS
+    onEditCategoryClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -192,15 +191,241 @@ private fun TransactionDetailContent(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        AmountCard(transaction)
-        DetailsCard(
-            transaction = transaction,
-            onCategoryClick = onCategoryClick,
-            onEditCategoryClick = onEditCategoryClick  // ✅ PASS IT
-        )
-        SmsCard(transaction, onViewSmsClick)
-        MetadataCard(transaction)
+        // Amount Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = if (transaction.type == TransactionType.DEBIT)
+                    DebitRed.copy(alpha = 0.1f)
+                else
+                    CreditGreen.copy(alpha = 0.1f)
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = if (transaction.type == TransactionType.DEBIT) "Debited" else "Credited",
+                    color = TextGray,
+                    fontSize = 14.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "₹${String.format("%.2f", transaction.amount)}",
+                    color = if (transaction.type == TransactionType.DEBIT) DebitRed else CreditGreen,
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        // ✅ ACCOUNT INFORMATION CARD
+        if (transaction.accountLast4Digits != null) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = SurfaceDark)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.AccountBox,
+                            contentDescription = null,
+                            tint = PrimaryBlue,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Column {
+                            Text(
+                                "Account",
+                                color = TextGray,
+                                fontSize = 12.sp
+                            )
+                            Text(
+                                transaction.accountName ?: "Account",
+                                color = TextWhite,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = PrimaryBlue.copy(alpha = 0.2f)
+                    ) {
+                        Text(
+                            "****${transaction.accountLast4Digits}",
+                            color = PrimaryBlue,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Merchant Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = SurfaceDark)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                DetailRow(
+                    label = "Merchant",
+                    value = transaction.merchantDisplayName ?: transaction.merchantRaw ?: "Unknown"
+                )
+
+                if (transaction.merchantRaw != null &&
+                    transaction.merchantDisplayName != transaction.merchantRaw) {
+                    DetailRow(
+                        label = "Raw Name",
+                        value = transaction.merchantRaw ?: "",
+                        valueColor = TextGray
+                    )
+                }
+            }
+        }
+
+        // Category Card
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onCategoryClick),
+            colors = CardDefaults.cardColors(containerColor = SurfaceDark)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text("Category", color = TextGray, fontSize = 12.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        transaction.category ?: "Uncategorized",
+                        color = TextWhite,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                if (transaction.needsReview) {
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = Color(0xFFFF9800).copy(alpha = 0.2f)
+                    ) {
+                        Text(
+                            "Needs Review",
+                            color = Color(0xFFFF9800),
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+
+                IconButton(onClick = onEditCategoryClick) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = "Edit Category",
+                        tint = PrimaryBlue,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        }
+
+        // Transaction Details Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = SurfaceDark)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                DetailRow(
+                    label = "Date & Time",
+                    value = formatTimestamp(transaction.timestamp)
+                )
+
+                DetailRow(
+                    label = "Type",
+                    value = transaction.type.name,
+                    valueColor = if (transaction.type == TransactionType.DEBIT) DebitRed else CreditGreen
+                )
+
+                transaction.referenceNumber?.let {
+                    DetailRow(
+                        label = "Reference Number",
+                        value = it
+                    )
+                }
+
+                transaction.upiVpa?.let {
+                    DetailRow(
+                        label = "UPI ID",
+                        value = it
+                    )
+                }
+
+                DetailRow(
+                    label = "Sender",
+                    value = transaction.sender
+                )
+
+                transaction.contextConfidence?.let {
+                    DetailRow(
+                        label = "Confidence",
+                        value = "${(it * 100).toInt()}%",
+                        valueColor = if (it > 0.7f) CreditGreen else Color(0xFFFF9800)
+                    )
+                }
+            }
+        }
+
+        // View SMS Button
+        OutlinedButton(
+            onClick = onViewSmsClick,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = PrimaryBlue
+            ),
+            border = BorderStroke(1.dp, PrimaryBlue)
+        ) {
+            Icon(
+                Icons.Default.Email,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("View Original SMS")
+        }
     }
+}
+private fun formatTimestamp(timestamp: Long): String {
+    val sdf = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
+    return sdf.format(Date(timestamp))
 }
 
 @Composable
@@ -353,6 +578,7 @@ private fun MetadataCard(transaction: Transaction) {
 private fun DetailRow(
     label: String,
     value: String,
+    valueColor: Color = TextWhite,
     action: @Composable (() -> Unit)? = null
 ) {
     Row(

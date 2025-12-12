@@ -17,7 +17,10 @@ fun TransactionEntity.toDomain(): Transaction {
         sender = sender,
         referenceNumber = referenceNumber,
         upiVpa = upiVpa,
-        needsReview = needsReview
+        needsReview = needsReview,
+        contextConfidence = contextConfidence,
+        accountLast4Digits = accountLast4Digits,
+        accountName = accountName
     )
 }
 
@@ -35,6 +38,9 @@ fun Transaction.toEntity(): TransactionEntity {
         referenceNumber = referenceNumber,
         upiVpa = upiVpa,
         needsReview = needsReview,
-        contextData = null
+        contextData = null,
+        contextConfidence = contextConfidence,
+        accountLast4Digits = accountLast4Digits,
+        accountName = accountName
     )
 }

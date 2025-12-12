@@ -71,13 +71,16 @@ object AppModule {
         senderAuthentication: SenderAuthentication,
         transactionParser: TransactionParser,
         categorizationEngine: CategorizationEngine,
-        contextEngine: ContextEngine
+        contextEngine: ContextEngine,
+
+        userAccountsRepository: UserAccountsRepository
     ): SmsProcessingEngine {
         return SmsProcessingEngine(
             senderAuthentication = senderAuthentication,
             transactionParser = transactionParser,
             categorizationEngine = categorizationEngine,
-            contextEngine = contextEngine
+            contextEngine = contextEngine,
+            userAccountsRepository = userAccountsRepository
         )
     }
 
