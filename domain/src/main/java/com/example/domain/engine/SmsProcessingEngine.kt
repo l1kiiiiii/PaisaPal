@@ -2,7 +2,8 @@ package com.example.domain.engine
 
 import com.example.domain.model.SmsMessage
 import com.example.domain.model.Transaction
-import com.example.domain.repository.UserAccountsRepository  // ✅ ADD THIS
+import com.example.domain.repository.UserAccount
+import com.example.domain.repository.UserAccountsRepository
 import javax.inject.Inject
 import java.util.UUID
 
@@ -11,7 +12,7 @@ class SmsProcessingEngine @Inject constructor(
     private val transactionParser: TransactionParser,
     private val categorizationEngine: CategorizationEngine,
     private val contextEngine: ContextEngine,
-    private val userAccountsRepository: UserAccountsRepository  // ✅ ADD THIS
+    private val userAccountsRepository: UserAccountsRepository
 ) {
     suspend fun processSms(smsMessage: SmsMessage): Transaction? {
         // Step 1: Check if sender is authentic
@@ -24,10 +25,9 @@ class SmsProcessingEngine @Inject constructor(
             return null
         }
 
-        //  Step 3: Verify message contains user's account number
-        if (!containsUserAccount(smsMessage.body)) {
-            return null
-        }
+        //   Find which account matches and keep it
+        val matchedAccount =
+            findMatchingAccount(smsMessage.body) ?: return null  // No user account found in message
 
         val parsedTransaction = transactionParser.parse(
             smsMessage.body,
@@ -47,7 +47,10 @@ class SmsProcessingEngine @Inject constructor(
             sender = smsMessage.address,
             referenceNumber = parsedTransaction.referenceNumber,
             upiVpa = parsedTransaction.upiVpa,
-            needsReview = false
+            needsReview = false,
+
+            accountLast4Digits = matchedAccount.last4Digits,
+            accountName = matchedAccount.accountName
         )
 
         // Use confidence-based categorization
@@ -63,13 +66,15 @@ class SmsProcessingEngine @Inject constructor(
         return enriched.transaction
     }
 
-
-    private suspend fun containsUserAccount(messageBody: String): Boolean {
+    //  Returns the matched account instead of just boolean
+    private suspend fun findMatchingAccount(messageBody: String): UserAccount? {
         val userAccounts = userAccountsRepository.getAllAccounts()
 
-        // If no accounts configured, allow all (backward compatibility)
+        // If no accounts configured, return null (require accounts now)
         if (userAccounts.isEmpty()) {
-            return true
+            // For backward compatibility, you could return a default account:
+            // return UserAccount("0000", "Default Account")
+            return null
         }
 
         // Extract all 4-digit numbers from message
@@ -77,8 +82,8 @@ class SmsProcessingEngine @Inject constructor(
             .map { it.value }
             .toSet()
 
-        // Check if ANY user account matches
-        return userAccounts.any { account ->
+        // Return the FIRST matching account
+        return userAccounts.firstOrNull { account ->
             numbersInMessage.contains(account.last4Digits)
         }
     }
