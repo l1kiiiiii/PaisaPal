@@ -49,31 +49,29 @@ class TransactionParser {
      * Extracts TRANSACTION amount, ignoring balance amounts.
      * Handles formats: Rs:25.00, Rs 25.00, Rs.25.00, ₹25.00
      */
-    private fun extractTransactionAmount(text: String): Double? {
-        // Pattern specifically looks for amount near transaction keywords
-        val pattern = "(?:credited|debited|withdrawn|paid|received|deposited)\\s+(?:for\\s+)?(?:rs\\.?|inr|₹)[:\\s]*([0-9,]+(?:\\.[0-9]{2})?)"
-        val regex = Regex(pattern, RegexOption.IGNORE_CASE)
-        val match = regex.find(text)
+    private fun extractTransactionAmount(body: String): Double? {
+        //  Use negative lookbehind to avoid "Bal" amounts
+        val patterns = listOf(
+            // Avoid balance amounts with negative lookbehind
+            "(?i)(?<!bal\\s|balance\\s|avl\\s|available\\s)(?:rs\\.?|inr|₹)\\s*[:=-]?\\s*([0-9,]+(?:\\.[0-9]{2})?)",
 
-        if (match != null) {
-            val amountStr = match.groupValues[1].replace(",", "")
-            return amountStr.toDoubleOrNull()
-        }
+            // Debited/Credited amounts (high priority)
+            "(?i)(?:debited|credited|paid|withdrawn|spent|charged)\\s+(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{2})?)",
 
-        // Fallback: Look for first Rs/INR/₹ amount that's NOT near "balance" keywords
-        val fallbackPattern = "(?:rs\\.?|inr|₹)[:\\s]*([0-9,]+(?:\\.[0-9]{2})?)"
-        val fallbackRegex = Regex(fallbackPattern, RegexOption.IGNORE_CASE)
+            // Transfer amounts
+            "(?i)(?:transfer|sent|received)\\s+(?:of\\s+)?(?:rs\\.?|inr|₹)?\\s*([0-9,]+(?:\\.[0-9]{2})?)"
+        )
 
-        for (matchResult in fallbackRegex.findAll(text)) {
-            // Check if this amount is near balance keywords
-            val startIndex = maxOf(0, matchResult.range.first - 20)
-            val contextBefore = text.substring(startIndex, matchResult.range.first).lowercase()
+        for (pattern in patterns) {
+            val matches = Regex(pattern).findAll(body)
+            for (match in matches) {
+                val amountStr = match.groupValues[1].replace(",", "")
+                val amount = amountStr.toDoubleOrNull()
 
-            if (!contextBefore.contains("bal") &&
-                !contextBefore.contains("balance") &&
-                !contextBefore.contains("avl")) {
-                val amountStr = matchResult.groupValues[1].replace(",", "")
-                return amountStr.toDoubleOrNull()
+                //  Validate it's a reasonable transaction amount
+                if (amount != null && amount > 0 && amount < 10_000_000) {
+                    return amount
+                }
             }
         }
 

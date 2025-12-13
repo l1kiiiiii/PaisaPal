@@ -25,9 +25,15 @@ class SmsProcessingEngine @Inject constructor(
             return null
         }
 
+        // Step 3: Check if message body is spam
+        if (senderAuthentication.isBodySpam(smsMessage.body)) {
+            return null
+        }
         //   Find which account matches and keep it
-        val matchedAccount =
-            findMatchingAccount(smsMessage.body) ?: return null  // No user account found in message
+        val matchedAccount = findMatchingAccount(smsMessage.body)
+        if (matchedAccount == null) {
+            return null
+        }
 
         val parsedTransaction = transactionParser.parse(
             smsMessage.body,
@@ -78,13 +84,13 @@ class SmsProcessingEngine @Inject constructor(
         }
 
         // Extract all 4-digit numbers from message
-        val numbersInMessage = Regex("\\d{4}").findAll(messageBody)
-            .map { it.value }
-            .toSet()
-
-        // Return the FIRST matching account
+        //  Use anchor-based regex instead of simple \d{4}
+        // This prevents matching years (2024), OTP codes, etc.
         return userAccounts.firstOrNull { account ->
-            numbersInMessage.contains(account.last4Digits)
+            val strictPattern = Regex(
+                "(?i)(?:a/?c|ac/no|account|ending|card|x+|\\*+)\\s*(?:no\\.?)?\\s*[.:\\-]*\\s*${account.last4Digits}\\b"
+            )
+            strictPattern.containsMatchIn(messageBody)
         }
     }
 }
