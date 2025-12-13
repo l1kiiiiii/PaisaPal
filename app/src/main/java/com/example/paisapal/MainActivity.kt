@@ -23,12 +23,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.paisapal.ui.screens.accounts.ManageAccountsScreen
 import com.example.paisapal.ui.screens.accounts.ManageAccountsViewModel
-import com.example.paisapal.ui.screens.onboarding.OnboardingAccountSetup
 import com.example.paisapal.ui.theme.PaisaPalTheme
 import dagger.hilt.android.AndroidEntryPoint
 
-// ✅ MOVED OUTSIDE MainActivity
+
 enum class PermissionStep {
     SMS_PERMISSION,
     LOCATION_PERMISSION,
@@ -229,7 +229,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// ✅ AppRoot composable
+//  AppRoot composable
 @Composable
 fun AppRoot(
     currentStep: PermissionStep,
@@ -261,11 +261,12 @@ fun AppRoot(
             currentStep == PermissionStep.NOTIFICATION_ACCESS || !hasNotificationAccess -> {
                 NotificationAccessScreen(onRequestPermission = onRequestNotificationAccess)
             }
-            // Step 4: Account Setup (if no accounts exist)
+            //  Step 4: Account Setup - USE ManageAccountsScreen IN ONBOARDING MODE
             currentStep == PermissionStep.ACCOUNT_SETUP || accounts.isEmpty() -> {
-                OnboardingAccountSetup(
+                ManageAccountsScreen(
                     viewModel = accountsViewModel,
-                    onComplete = onAccountSetupComplete
+                    isOnboarding = true,
+                    onDoneClick = onAccountSetupComplete
                 )
             }
             // Step 5: All done - show main app
@@ -275,6 +276,7 @@ fun AppRoot(
         }
     }
 }
+
 
 @Composable
 fun SmsPermissionScreen(onRequestPermission: () -> Unit) {
