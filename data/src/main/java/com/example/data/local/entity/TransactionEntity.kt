@@ -1,4 +1,3 @@
-
 package com.example.data.local.entity
 
 import androidx.room.Entity
@@ -26,5 +25,7 @@ data class TransactionEntity(
     val contextSource: String? = null,
     val detectedPlace: String? = null,
     val contextConfidence: Float? = null,
-    val contextData: String?=null
+    val contextData: String?=null,
+    val accountLast4Digits: String? = null,
+    val accountName: String? = null
 )

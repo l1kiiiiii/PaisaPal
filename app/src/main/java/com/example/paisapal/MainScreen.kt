@@ -26,6 +26,7 @@ import com.example.paisapal.ui.screens.settings.SettingsScreen
 import com.example.paisapal.ui.theme.PrimaryBlue
 
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.paisapal.ui.screens.accounts.ManageAccountsScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,7 +35,7 @@ fun MainScreen() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // ✅ ADD: State for Quick Add Dialog
+
     var showQuickAddDialog by remember { mutableStateOf(false) }
 
     // Routes without bottom bar
@@ -108,8 +109,8 @@ fun MainScreen() {
                     onReviewClick = {
                         navController.navigate("review")
                     },
-                    showQuickAddDialog = showQuickAddDialog,              // ✅ PASS STATE
-                    onDismissQuickAdd = { showQuickAddDialog = false }    // ✅ PASS CALLBACK
+                    showQuickAddDialog = showQuickAddDialog,              //  PASS STATE
+                    onDismissQuickAdd = { showQuickAddDialog = false }    //  PASS CALLBACK
                 )
             }
 
@@ -126,7 +127,17 @@ fun MainScreen() {
             }
 
             composable("settings") {
-                SettingsScreen()
+                SettingsScreen(
+                    onNavigateToAccounts = {
+                        navController.navigate("manage_accounts")
+                    }
+                )
+            }
+
+            composable("manage_accounts") {
+                ManageAccountsScreen(
+                    onBackClick = { navController.popBackStack() }
+                )
             }
 
             composable("notification_debug") {
@@ -135,7 +146,6 @@ fun MainScreen() {
                 )
             }
 
-            // ❌ REMOVED: "add_manual_transaction" route and ManualTransactionPlaceholder
 
             // ===== DETAIL SCREENS =====
 

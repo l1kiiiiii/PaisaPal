@@ -8,6 +8,7 @@ import com.example.data.local.dao.MerchantMappingDao
 import com.example.data.local.dao.NotificationCacheDao
 import com.example.data.local.dao.SavedPlaceDao
 import com.example.data.local.dao.TransactionDao
+import com.example.data.local.dao.UserAccountDao
 import com.example.data.local.dao.UserCorrectionDao
 import com.example.data.local.entity.BudgetEntity
 import com.example.data.local.entity.ContextSignatureEntity
@@ -15,8 +16,8 @@ import com.example.data.local.entity.MerchantMappingEntity
 import com.example.data.local.entity.NotificationCacheEntity
 import com.example.data.local.entity.SavedPlaceEntity
 import com.example.data.local.entity.TransactionEntity
+import com.example.data.local.entity.UserAccountEntity
 import com.example.data.local.entity.UserCorrectionEntity
-
 
 @Database(
     entities = [
@@ -26,7 +27,8 @@ import com.example.data.local.entity.UserCorrectionEntity
         BudgetEntity::class,
         NotificationCacheEntity::class,
         UserCorrectionEntity::class,
-        ContextSignatureEntity::class
+        ContextSignatureEntity::class,
+        UserAccountEntity::class
     ],
     version = 1,
     exportSchema = false
@@ -39,4 +41,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun notificationCacheDao(): NotificationCacheDao
     abstract fun userCorrectionDao(): UserCorrectionDao
     abstract fun contextSignatureDao(): ContextSignatureDao
+    abstract fun userAccountDao(): UserAccountDao
 }

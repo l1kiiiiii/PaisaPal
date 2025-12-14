@@ -2,9 +2,11 @@ package com.example.data.di
 
 import com.example.data.cache.NotificationCacheImpl
 import com.example.data.local.LocationProviderImpl
+import com.example.data.repository.UserAccountsRepositoryImpl
 import com.example.data.repository.UserCorrectionRepositoryImpl
 import com.example.domain.data.NotificationCache
 import com.example.domain.repository.LocationProvider
+import com.example.domain.repository.UserAccountsRepository
 import com.example.domain.repository.UserCorrectionRepository
 import dagger.Binds
 import dagger.Module
@@ -33,4 +35,9 @@ abstract class BindingModule {
     abstract fun bindUserCorrectionRepository(
         impl: UserCorrectionRepositoryImpl
     ): UserCorrectionRepository
+
+    @Binds
+    abstract fun bindUserAccountsRepository(
+        impl: UserAccountsRepositoryImpl
+    ): UserAccountsRepository
 }

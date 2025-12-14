@@ -22,8 +22,20 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.paisapal.ui.screens.accounts.ManageAccountsScreen
+import com.example.paisapal.ui.screens.accounts.ManageAccountsViewModel
 import com.example.paisapal.ui.theme.PaisaPalTheme
 import dagger.hilt.android.AndroidEntryPoint
+
+
+enum class PermissionStep {
+    SMS_PERMISSION,
+    LOCATION_PERMISSION,
+    NOTIFICATION_ACCESS,
+    ACCOUNT_SETUP,
+    ALL_GRANTED
+}
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -31,13 +43,6 @@ class MainActivity : ComponentActivity() {
     private val _hasSmsPermissions = mutableStateOf(false)
     private val _hasLocationPermission = mutableStateOf(false)
     private val _hasNotificationAccess = mutableStateOf(false)
-
-    private enum class PermissionStep {
-        SMS_PERMISSION,
-        LOCATION_PERMISSION,
-        NOTIFICATION_ACCESS,
-        ALL_GRANTED
-    }
 
     private val currentStep = mutableStateOf(PermissionStep.SMS_PERMISSION)
 
@@ -66,11 +71,9 @@ class MainActivity : ComponentActivity() {
     ) { permissions ->
         Log.d(TAG, "Location permissions result: $permissions")
 
-        // FINE is optional, COARSE is required
         val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
         val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
 
-        // Only require COARSE location (FINE is a bonus)
         val hasMinimumLocation = coarseGranted
 
         Log.d(TAG, "Location Permission granted: $hasMinimumLocation (Fine: $fineGranted, Coarse: $coarseGranted)")
@@ -89,7 +92,7 @@ class MainActivity : ComponentActivity() {
         _hasNotificationAccess.value = hasAccess
 
         if (hasAccess) {
-            currentStep.value = PermissionStep.ALL_GRANTED
+            currentStep.value = PermissionStep.ACCOUNT_SETUP
         }
 
         Log.d(TAG, "Notification Access granted: $hasAccess")
@@ -103,39 +106,18 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             PaisaPalTheme {
-                val step by remember { currentStep }
-                val hasSms by remember { _hasSmsPermissions }
-                val hasLocation by remember { _hasLocationPermission }
-                val hasNotif by remember { _hasNotificationAccess }
-
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = Color.Black
-                ) {
-                    when {
-                        step == PermissionStep.ALL_GRANTED && hasSms && hasLocation && hasNotif -> {
-                            MainScreen()
-                        }
-                        step == PermissionStep.SMS_PERMISSION || !hasSms -> {
-                            SmsPermissionScreen(
-                                onRequestPermission = { requestSmsPermissions() }
-                            )
-                        }
-                        step == PermissionStep.LOCATION_PERMISSION || !hasLocation -> {
-                            LocationPermissionScreen(
-                                onRequestPermission = { requestLocationPermissions() }
-                            )
-                        }
-                        step == PermissionStep.NOTIFICATION_ACCESS || !hasNotif -> {
-                            NotificationAccessScreen(
-                                onRequestPermission = { requestNotificationAccess() }
-                            )
-                        }
-                        else -> {
-                            MainScreen()
-                        }
+                AppRoot(
+                    currentStep = currentStep.value,
+                    hasSmsPermissions = _hasSmsPermissions.value,
+                    hasLocationPermission = _hasLocationPermission.value,
+                    hasNotificationAccess = _hasNotificationAccess.value,
+                    onRequestSmsPermission = { requestSmsPermissions() },
+                    onRequestLocationPermission = { requestLocationPermissions() },
+                    onRequestNotificationAccess = { requestNotificationAccess() },
+                    onAccountSetupComplete = {
+                        currentStep.value = PermissionStep.ALL_GRANTED
                     }
-                }
+                )
             }
         }
     }
@@ -147,7 +129,7 @@ class MainActivity : ComponentActivity() {
             val hasAccess = hasNotificationAccess()
             _hasNotificationAccess.value = hasAccess
             if (hasAccess && currentStep.value == PermissionStep.NOTIFICATION_ACCESS) {
-                currentStep.value = PermissionStep.ALL_GRANTED
+                currentStep.value = PermissionStep.ACCOUNT_SETUP
             }
         }
     }
@@ -178,7 +160,6 @@ class MainActivity : ComponentActivity() {
                 Manifest.permission.ACCESS_COARSE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
 
-            // Only need COARSE to proceed
             val hasLocation = hasCoarseLocation
             _hasLocationPermission.value = hasLocation
             Log.d(TAG, "Location permission check: $hasLocation (Fine: $hasFineLocation, Coarse: $hasCoarseLocation)")
@@ -193,7 +174,7 @@ class MainActivity : ComponentActivity() {
                 !hasSms -> PermissionStep.SMS_PERMISSION
                 !hasLocation -> PermissionStep.LOCATION_PERMISSION
                 !hasNotif -> PermissionStep.NOTIFICATION_ACCESS
-                else -> PermissionStep.ALL_GRANTED
+                else -> PermissionStep.ACCOUNT_SETUP
             }
 
             Log.d(TAG, "Current permission step: ${currentStep.value}")
@@ -247,6 +228,55 @@ class MainActivity : ComponentActivity() {
         private const val TAG = "MainActivity"
     }
 }
+
+//  AppRoot composable
+@Composable
+fun AppRoot(
+    currentStep: PermissionStep,
+    hasSmsPermissions: Boolean,
+    hasLocationPermission: Boolean,
+    hasNotificationAccess: Boolean,
+    onRequestSmsPermission: () -> Unit,
+    onRequestLocationPermission: () -> Unit,
+    onRequestNotificationAccess: () -> Unit,
+    onAccountSetupComplete: () -> Unit,
+    accountsViewModel: ManageAccountsViewModel = hiltViewModel()
+) {
+    val accounts by accountsViewModel.accounts.collectAsState()
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = Color.Black
+    ) {
+        when {
+            // Step 1: SMS Permission
+            currentStep == PermissionStep.SMS_PERMISSION || !hasSmsPermissions -> {
+                SmsPermissionScreen(onRequestPermission = onRequestSmsPermission)
+            }
+            // Step 2: Location Permission
+            currentStep == PermissionStep.LOCATION_PERMISSION || !hasLocationPermission -> {
+                LocationPermissionScreen(onRequestPermission = onRequestLocationPermission)
+            }
+            // Step 3: Notification Access
+            currentStep == PermissionStep.NOTIFICATION_ACCESS || !hasNotificationAccess -> {
+                NotificationAccessScreen(onRequestPermission = onRequestNotificationAccess)
+            }
+            //  Step 4: Account Setup - USE ManageAccountsScreen IN ONBOARDING MODE
+            currentStep == PermissionStep.ACCOUNT_SETUP || accounts.isEmpty() -> {
+                ManageAccountsScreen(
+                    viewModel = accountsViewModel,
+                    isOnboarding = true,
+                    onDoneClick = onAccountSetupComplete
+                )
+            }
+            // Step 5: All done - show main app
+            else -> {
+                MainScreen()
+            }
+        }
+    }
+}
+
 
 @Composable
 fun SmsPermissionScreen(onRequestPermission: () -> Unit) {

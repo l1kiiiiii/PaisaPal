@@ -1,4 +1,3 @@
-// domain/src/main/java/com/example/domain/model/Transaction.kt
 package com.example.domain.model
 
 data class Transaction(
@@ -21,7 +20,9 @@ data class Transaction(
     val locationAccuracy: Float? = null,
     val contextSource: String? = null,
     val detectedPlace: String? = null,
-    val contextConfidence: Float? = null
+    val contextConfidence: Float? = null,
+    val accountLast4Digits: String? = null,
+    val accountName: String? = null
 )
 
 enum class TransactionType {

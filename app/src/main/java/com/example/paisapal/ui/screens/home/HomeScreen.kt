@@ -523,12 +523,16 @@ private fun TransactionListItem(
     val isCredit = transaction.type == TransactionType.CREDIT
 
     Card(
-        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = SurfaceDark)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -536,23 +540,56 @@ private fun TransactionListItem(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
+                // Merchant name
                 Text(
-                    text = transaction.merchantDisplayName ?: "Unknown",
+                    text = transaction.merchantDisplayName ?: transaction.merchantRaw ?: "Unknown",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = TextWhite
                 )
 
-                transaction.category?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextGray,
-                        fontSize = 12.sp
-                    )
+                // Category and Account info row
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Category
+                    transaction.category?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextGray,
+                            fontSize = 12.sp
+                        )
+                    }
+
+                    //  ACCOUNT INFORMATION
+                    if (transaction.accountLast4Digits != null) {
+                        // Separator dot if category exists
+                        if (transaction.category != null) {
+                            Text(
+                                text = "•",
+                                color = TextGray,
+                                fontSize = 12.sp
+                            )
+                        }
+
+                        // Account name or just digits
+                        Text(
+                            text = if (transaction.accountName != null) {
+                                "${transaction.accountName} ****${transaction.accountLast4Digits}"
+                            } else {
+                                "****${transaction.accountLast4Digits}"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextGray,
+                            fontSize = 12.sp
+                        )
+                    }
                 }
             }
 
+            // Amount
             Text(
                 text = "${if (isCredit) "+" else "-"}₹${String.format("%.2f", transaction.amount)}",
                 style = MaterialTheme.typography.titleMedium,
