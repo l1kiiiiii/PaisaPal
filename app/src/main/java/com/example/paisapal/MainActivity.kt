@@ -174,7 +174,7 @@ class MainActivity : ComponentActivity() {
                 !hasSms -> PermissionStep.SMS_PERMISSION
                 !hasLocation -> PermissionStep.LOCATION_PERMISSION
                 !hasNotif -> PermissionStep.NOTIFICATION_ACCESS
-                else -> PermissionStep.ACCOUNT_SETUP
+                else -> PermissionStep.ALL_GRANTED
             }
 
             Log.d(TAG, "Current permission step: ${currentStep.value}")
