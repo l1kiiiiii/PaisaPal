@@ -58,7 +58,7 @@ class SmsReceiver : BroadcastReceiver() {
             return
         }
 
-        if (messages == null || messages.isEmpty()) {
+        if (messages.isNullOrEmpty()) {
             Log.w(TAG, "No messages found")
             pendingResult.finish()
             return
@@ -66,58 +66,53 @@ class SmsReceiver : BroadcastReceiver() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                messages.forEach { message ->
-                    val sender = message.displayOriginatingAddress
-                    val body = message.messageBody
-                    val timestamp = message.timestampMillis
+                //  Group fragments by sender (Handles Multipart/Long SMS)
+                val messagesBySender = messages.groupBy { it.displayOriginatingAddress }
+
+                messagesBySender.forEach { (sender, fragments) ->
+                    // Join the body parts to get the complete SMS text
+                    val fullBody = fragments.joinToString("") { it.messageBody }
+                    val timestamp = fragments[0].timestampMillis
 
                     Log.d(TAG, "Processing SMS from: $sender")
 
                     try {
-                        // STEP 1: Create SmsMessage (EXISTING LOGIC)
+                        //  Deterministic ID to prevent duplicates
+                        val uniqueId = "${sender}_${timestamp}_${fullBody.hashCode()}"
+
                         val smsMessage = SmsMessage(
-                            id = "${sender}_${timestamp}",
+                            id = uniqueId,
                             address = sender,
-                            body = body,
+                            body = fullBody,
                             timestamp = timestamp,
                             type = 1 // Inbox
                         )
 
-                        // STEP 2: Process SMS with existing engine (EXISTING LOGIC)
                         val transaction = smsProcessingEngine.processSms(smsMessage)
 
                         if (transaction != null) {
-                            // STEP 3: Save to database (EXISTING LOGIC)
                             transactionRepository.insert(transaction)
                             Log.d(TAG, "✓ Transaction saved: ${transaction.amount}")
 
-                            // STEP 4: NEW - Trigger context-aware processing
-                            // This runs asynchronously and won't block SMS processing
+                            // Trigger context processing
                             launch {
                                 try {
                                     transactionProcessingService.processTransaction(transaction)
-                                    Log.d(TAG, "✓ Context-aware processing initiated for: ${transaction.id}")
                                 } catch (e: Exception) {
-                                    Log.e(TAG, "❌ Context processing failed for ${transaction.id}", e)
-                                    // Don't fail the whole SMS processing if context fails
+                                    Log.e(TAG, "Context processing failed", e)
                                 }
                             }
                         } else {
-                            Log.d(TAG, "SMS not a transaction")
+                            Log.d(TAG, "SMS ignored (Not a transaction or filtered)")
                         }
                     } catch (e: Exception) {
-                        Log.e(TAG, "❌ Error processing SMS from $sender", e)
+                        Log.e(TAG, "Error processing SMS from $sender", e)
                     }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Fatal error in SMS processing", e)
             } finally {
-                try {
-                    pendingResult.finish()
-                    Log.d(TAG, "PendingResult finished")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error finishing pendingResult", e)
-                }
+                pendingResult.finish()
             }
         }
     }

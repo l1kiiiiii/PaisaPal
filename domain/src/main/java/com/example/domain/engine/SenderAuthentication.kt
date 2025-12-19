@@ -18,7 +18,7 @@ class SenderAuthentication @Inject constructor() {
         val normalized = sender.replace("+91", "").trim()
 
         //  10-digit mobile numbers (personal SMS)
-        if (normalized.matches(Regex("^\\d{10}$"))) return false
+       // if (normalized.matches(Regex("^\\d{10}$"))) return false
 
         //  Short codes (1-4 digits) - usually spam/VAS
         if (normalized.matches(Regex("^\\d{1,4}$"))) return false
