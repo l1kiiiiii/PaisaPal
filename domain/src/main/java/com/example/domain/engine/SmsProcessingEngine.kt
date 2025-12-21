@@ -88,7 +88,7 @@ class SmsProcessingEngine @Inject constructor(
         // This prevents matching years (2024), OTP codes, etc.
         return userAccounts.firstOrNull { account ->
             val strictPattern = Regex(
-                "(?i)(?:a/?c|ac/no|account|ending|card|x+|\\*+)\\s*(?:no\\.?)?\\s*[.:\\-]*\\s*${account.last4Digits}\\b"
+                "(?i)(?:a/?c|ac/no|account|ending|card|x+|\\*+)\\s*(?:no\\.?)?\\s*[.:\\-*]*\\s*${account.last4Digits}\\b"
             )
             strictPattern.containsMatchIn(messageBody)
         }

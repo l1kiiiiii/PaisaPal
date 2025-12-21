@@ -96,7 +96,7 @@ class TransactionMatchingEngine(
     }
 
     private fun isSimilarTransaction(txn1: Transaction, txn2: Transaction): Boolean {
-        if (txn1.amount != txn2.amount) return false
+        if (kotlin.math.abs(txn1.amount) != kotlin.math.abs(txn2.amount)) return false
 
         val timeDiff = kotlin.math.abs(txn1.timestamp - txn2.timestamp)
         if (timeDiff > 5 * 60 * 1000) return false

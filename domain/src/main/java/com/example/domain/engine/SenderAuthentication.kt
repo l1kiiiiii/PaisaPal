@@ -18,27 +18,13 @@ class SenderAuthentication @Inject constructor() {
         val normalized = sender.replace("+91", "").trim()
 
         //  10-digit mobile numbers (personal SMS)
-       // if (normalized.matches(Regex("^\\d{10}$"))) return false
+       if (normalized.matches(Regex("^\\d{10}$"))) return true
 
         //  Short codes (1-4 digits) - usually spam/VAS
         if (normalized.matches(Regex("^\\d{1,4}$"))) return false
 
         //  Bank sender patterns
-        return when {
-            // Pattern: XX-BANKNAME (e.g., VM-HDFCBK, AX-ICICIB)
-            normalized.matches(Regex("^[A-Z]{2}-[A-Z0-9]+$")) -> true
-
-            // 6-digit alphanumeric (e.g., HDFCBK, 123456)
-            normalized.matches(Regex("^[A-Z0-9]{6}$")) -> true
-
-            // Known wallets (exact match)
-            normalized.uppercase() in setOf(
-                "PAYTM", "PHONEPE", "GPAY", "AMAZONP", "BHIM", "MOBIKWIK",
-                "FREECHARGE", "PAYZAPP", "JIOMONEY"
-            ) -> true
-
-            else -> false
-        }
+        return true
     }
 
     //  Comprehensive spam detection

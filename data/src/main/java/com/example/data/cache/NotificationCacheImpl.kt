@@ -22,6 +22,7 @@ class NotificationCacheImpl @Inject constructor() : NotificationCache {
         timestamp: Long
     ) {
         synchronized(cache) {
+            // Store the amount exactly as passed (Negative or Positive)
             cache.add(0, PaymentNotification(
                 amount, merchantName, packageName, appName, fullText, timestamp
             ))
@@ -40,8 +41,9 @@ class NotificationCacheImpl @Inject constructor() : NotificationCache {
         timeWindowMs: Long
     ): PaymentNotification? {
         synchronized(cache) {
+
             return cache
-                .filter { abs(it.amount - amount) <= 1.0 }
+                .filter { abs(abs(it.amount) - abs(amount)) <= 1.0 }
                 .filter { abs(it.timestamp - timestamp) <= timeWindowMs }
                 .minByOrNull { abs(it.timestamp - timestamp) }
         }

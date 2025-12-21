@@ -13,6 +13,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.math.abs
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -89,6 +90,11 @@ class HomeViewModel @Inject constructor(
     ): List<SmartFeedItem> {
         val feedItems = mutableListOf<SmartFeedItem>()
 
+        // Sum of all negative transactions, converted to positive
+        val totalSpentValue = transactions
+            .filter { it.type == TransactionType.DEBIT }
+            .sumOf { it.amount }
+
         // 1. Overview Card with real budget data
         val criticalBudget = budgetSummaries
             .filter { it.progress >= 0.8f }
@@ -97,9 +103,7 @@ class HomeViewModel @Inject constructor(
         if (criticalBudget != null) {
             feedItems.add(
                 SmartFeedItem.OverviewCard(
-                    totalSpent = transactions
-                        .filter { it.type == TransactionType.DEBIT }
-                        .sumOf { it.amount },
+                    totalSpent = totalSpentValue,
                     budgetStatus = criticalBudget.category,
                     budgetProgress = criticalBudget.progress
                 )
@@ -107,9 +111,7 @@ class HomeViewModel @Inject constructor(
         } else {
             feedItems.add(
                 SmartFeedItem.OverviewCard(
-                    totalSpent = transactions
-                        .filter { it.type == TransactionType.DEBIT }
-                        .sumOf { it.amount },
+                    totalSpent = totalSpentValue,
                     budgetStatus = "All categories on track",
                     budgetProgress = 0f
                 )
