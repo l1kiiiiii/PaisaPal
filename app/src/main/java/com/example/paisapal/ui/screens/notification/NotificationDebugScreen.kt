@@ -80,11 +80,15 @@ fun NotificationDebugScreen(
                         colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A))
                     ) {
                         Column(Modifier.padding(16.dp)) {
+                            val isCredit = notif.amount >= 0
+                            val displayAmount = kotlin.math.abs(notif.amount)
+                            val sign = if (isCredit) "+" else "-"
+                            val color = if (isCredit) Color(0xFF00C853) else Color(0xFFD32F2F) // Green vs Red
                             Text(
                                 text = "₹${String.format("%.2f", notif.amount)}",
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF00C853)
+                                color =color
                             )
                             Text("App: ${notif.appName}", color = Color.White, fontSize = 14.sp)
                             notif.merchantName?.let {

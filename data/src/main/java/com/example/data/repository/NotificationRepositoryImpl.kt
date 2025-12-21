@@ -50,7 +50,7 @@ class NotificationRepositoryImpl @Inject constructor() : NotificationRepository 
         return mutex.withLock {
             val now = System.currentTimeMillis()
             cache.firstOrNull {
-                abs(it.amount - amount) < 0.01 &&
+                abs(abs(it.amount) - abs(amount)) < 0.01 &&
                         now - it.timestamp < timeWindow
             }
         }

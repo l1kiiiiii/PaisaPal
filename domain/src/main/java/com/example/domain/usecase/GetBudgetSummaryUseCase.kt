@@ -1,11 +1,13 @@
 package com.example.domain.usecase
 
 import com.example.domain.model.Budget
+import com.example.domain.model.TransactionType
 import com.example.domain.repository.BudgetRepository
 import com.example.domain.repository.TransactionRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import javax.inject.Inject
+import kotlin.math.abs
 
 data class BudgetSummary(
     val category: String,
@@ -35,9 +37,10 @@ class GetBudgetSummaryUseCase @Inject constructor(
                     .filter { transaction ->
                         transaction.category == budget.category &&
                                 transaction.timestamp >= currentMonth.start &&
-                                transaction.timestamp <= currentMonth.end
+                                transaction.timestamp <= currentMonth.end &&
+                                transaction.type == TransactionType.DEBIT
                     }
-                    .sumOf { it.amount }
+                    .sumOf { abs(it.amount)}
 
                 val remaining = budget.limitAmount - spent // Changed from budget.amount
                 val progress = if (budget.limitAmount > 0) {
