@@ -14,6 +14,7 @@ composeMaterialIcons = "1.7.0"
 hilt = "2.51"
 hiltNavigationCompose = "1.2.0"
 kotlinxCoroutinesCore = "1.8.1"
+materialIconsExtended = "1.7.8"
 playServicesLocation = "21.0.1"
 room = "2.6.1"
 ksp = "2.0.0-1.0.21"
@@ -33,6 +34,7 @@ playServicesLocationVersion = "21.3.0"
 android-database-sqlcipher = { module = "net.zetetic:sqlcipher-android", version.ref = "androidDatabaseSqlcipher" }
 androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 androidx-compose-material-icons-core = { module = "androidx.compose.material:material-icons-core", version.ref = "composeMaterialIcons" }
+androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-hilt-compiler = { module = "androidx.hilt:hilt-compiler", version.ref = "hiltNavigationCompose" }
 androidx-hilt-work = { module = "androidx.hilt:hilt-work", version.ref = "hiltNavigationCompose" }

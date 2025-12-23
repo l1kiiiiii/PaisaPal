@@ -1,11 +1,19 @@
 package com.example.paisapal
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavType
@@ -14,7 +22,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.paisapal.ui.navigation.bottomNavItems
+import com.example.paisapal.ui.components.PaisaPalBottomBar
+import com.example.paisapal.ui.screens.accounts.ManageAccountsScreen
 import com.example.paisapal.ui.screens.budget.BudgetScreen
 import com.example.paisapal.ui.screens.categorize.CategorizeScreen
 import com.example.paisapal.ui.screens.detail.TransactionDetailScreen
@@ -23,10 +32,6 @@ import com.example.paisapal.ui.screens.insights.InsightsScreen
 import com.example.paisapal.ui.screens.notification.NotificationDebugScreen
 import com.example.paisapal.ui.screens.review.ReviewScreen
 import com.example.paisapal.ui.screens.settings.SettingsScreen
-import com.example.paisapal.ui.theme.PrimaryBlue
-
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.paisapal.ui.screens.accounts.ManageAccountsScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,15 +40,15 @@ fun MainScreen() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-
     var showQuickAddDialog by remember { mutableStateOf(false) }
 
-    // Routes without bottom bar
+    // Routes that should NOT show the bottom bar (ALL preserved)
     val navWithoutBottomBar = listOf(
         "import_sms",
         "transaction_detail/{transactionId}",
         "categorize/{transactionId}",
-        "notification_debug"
+        "notification_debug",
+        "manage_accounts"
     )
 
     val showBottomBar = navWithoutBottomBar.none { route ->
@@ -51,7 +56,7 @@ fun MainScreen() {
     }
 
     BackHandler(enabled = currentRoute != "home") {
-        if (currentRoute in listOf("review", "budget", "insights", "settings", "notification_debug")) {
+        if (currentRoute in listOf("review", "budget", "settings", "notification_debug")) {
             navController.navigate("home") {
                 popUpTo("home") { inclusive = true }
             }
@@ -62,12 +67,12 @@ fun MainScreen() {
 
     Scaffold(
         containerColor = Color.Black,
-        // ❌ REMOVED: topBar with "PaisaPal" title
         bottomBar = {
             if (showBottomBar) {
-                PaisaPalBottomNavigation(
+                // ✅ NEW: Floating dock with integrated FAB
+                PaisaPalBottomBar(
                     currentRoute = currentRoute ?: "home",
-                    onNavigate = { route ->
+                    onTabSelected = { route ->
                         navController.navigate(route) {
                             popUpTo(navController.graph.startDestinationId) {
                                 saveState = true
@@ -75,22 +80,9 @@ fun MainScreen() {
                             launchSingleTop = true
                             restoreState = true
                         }
-                    }
+                    },
+                    onFabClick = { showQuickAddDialog = true } // ✅ Triggers HomeScreen dialog
                 )
-            }
-        },
-        floatingActionButton = {
-            if (currentRoute == "home") {
-                FloatingActionButton(
-                    onClick = { showQuickAddDialog = true },
-                    containerColor = PrimaryBlue
-                ) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = "Quick Add Transaction",
-                        tint = Color.White
-                    )
-                }
             }
         }
     ) { paddingValues ->
@@ -99,7 +91,7 @@ fun MainScreen() {
             startDestination = "home",
             modifier = Modifier.padding(paddingValues)
         ) {
-            // ===== BOTTOM NAV SCREENS =====
+            // ===== MAIN TABS (3 tabs only) =====
 
             composable("home") {
                 HomeScreen(
@@ -109,21 +101,16 @@ fun MainScreen() {
                     onReviewClick = {
                         navController.navigate("review")
                     },
-                    showQuickAddDialog = showQuickAddDialog,              //  PASS STATE
-                    onDismissQuickAdd = { showQuickAddDialog = false }    //  PASS CALLBACK
+                    showQuickAddDialog = showQuickAddDialog,              // ✅ PASSED
+                    onDismissQuickAdd = { showQuickAddDialog = false }    // ✅ PASSED
                 )
             }
 
-            composable("review") {
-                ReviewScreen()
-            }
-
+            // ✅ MERGED Budget + Insights tab (shows both)
             composable("budget") {
-                BudgetScreen()
-            }
-
-            composable("insights") {
-                InsightsScreen()
+                BudgetAndInsightsScreen(
+                    onBackClick = { /* Already handled by BackHandler */ }
+                )
             }
 
             composable("settings") {
@@ -132,6 +119,12 @@ fun MainScreen() {
                         navController.navigate("manage_accounts")
                     }
                 )
+            }
+
+            // ===== OTHER SCREENS (ALL preserved) =====
+
+            composable("review") {
+                ReviewScreen()
             }
 
             composable("manage_accounts") {
@@ -146,8 +139,7 @@ fun MainScreen() {
                 )
             }
 
-
-            // ===== DETAIL SCREENS =====
+            // ===== DETAIL SCREENS (ALL preserved) =====
 
             composable(
                 route = "transaction_detail/{transactionId}",
@@ -159,16 +151,11 @@ fun MainScreen() {
                 )
             ) { backStackEntry ->
                 val transactionId = backStackEntry.arguments?.getString("transactionId")
-
                 if (transactionId != null) {
                     TransactionDetailScreen(
                         transactionId = transactionId,
-                        onBackClick = {
-                            navController.popBackStack()
-                        },
-                        onCategorizeClick = {
-                            navController.navigate("categorize/$transactionId")
-                        }
+                        onBackClick = { navController.popBackStack() },
+                        onCategorizeClick = { navController.navigate("categorize/$transactionId") }
                     )
                 } else {
                     LaunchedEffect(Unit) {
@@ -189,13 +176,10 @@ fun MainScreen() {
                 )
             ) { backStackEntry ->
                 val transactionId = backStackEntry.arguments?.getString("transactionId")
-
                 if (transactionId != null) {
                     CategorizeScreen(
                         transactionId = transactionId,
-                        onBackClick = {
-                            navController.popBackStack()
-                        },
+                        onBackClick = { navController.popBackStack() },
                         onCategorizeComplete = { category ->
                             navController.previousBackStackEntry
                                 ?.savedStateHandle
@@ -213,56 +197,33 @@ fun MainScreen() {
     }
 }
 
-@Preview
+// ✅ NEW: Merged Budget + Insights screen
 @Composable
-fun MainScreenPreview() {
-    MainScreen()
-}
+private fun BudgetAndInsightsScreen(onBackClick: () -> Unit) {
+    // Simple tab switcher - replace with TabRow or HorizontalPager later
+    var selectedTab by remember { mutableStateOf("budget") }
 
-@Preview
-@Composable
-fun PaisaPalBottomNavigationPreview() {
-    PaisaPalBottomNavigation(
-        currentRoute = "home",
-        onNavigate = {})
-}
-
-@Composable
-private fun PaisaPalBottomNavigation(
-    currentRoute: String,
-    onNavigate: (String) -> Unit
-) {
-    NavigationBar(
-        containerColor = Color.Transparent,
-        contentColor = Color.White
-    ) {
-        bottomNavItems.forEach { item ->
-            val isSelected = currentRoute == item.route
-
-            NavigationBarItem(
-                icon = {
-                    Icon(
-                        item.icon,
-                        contentDescription = item.label,
-                        tint = if (isSelected) PrimaryBlue else Color.Gray
-                    )
-                },
-                label = {
-                    Text(
-                        item.label,
-                        color = if (isSelected) PrimaryBlue else Color.Gray
-                    )
-                },
-                selected = isSelected,
-                onClick = { onNavigate(item.route) },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = PrimaryBlue,
-                    selectedTextColor = PrimaryBlue,
-                    unselectedIconColor = Color.Gray,
-                    unselectedTextColor = Color.Gray,
-                    indicatorColor = Color.Transparent
-                )
+    Column {
+        // Tab Headers
+        TabRow(
+            selectedTabIndex = if (selectedTab == "budget") 0 else 1
+        ) {
+            Tab(
+                selected = selectedTab == "budget",
+                onClick = { selectedTab = "budget" },
+                text = { Text("Budget") }
             )
+            Tab(
+                selected = selectedTab == "insights",
+                onClick = { selectedTab = "insights" },
+                text = { Text("Insights") }
+            )
+        }
+
+        // Tab Content
+        when (selectedTab) {
+            "budget" -> BudgetScreen()
+            "insights" -> InsightsScreen()
         }
     }
 }
