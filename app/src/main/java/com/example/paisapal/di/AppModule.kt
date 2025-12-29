@@ -10,11 +10,20 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+import android.content.Context
+import androidx.work.WorkManager
+import dagger.hilt.android.qualifiers.ApplicationContext
+
 
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
+    @Provides
+    @Singleton
+    fun provideWorkManager(@ApplicationContext context: Context): WorkManager {
+        return WorkManager.getInstance(context)
+    }
     @Provides
     @Singleton
     fun provideTransactionParser(): TransactionParser {
@@ -108,4 +117,6 @@ object AppModule {
     ): CheckBudgetAlertsUseCase {
         return CheckBudgetAlertsUseCase(getBudgetSummaryUseCase)
     }
+
+
 }

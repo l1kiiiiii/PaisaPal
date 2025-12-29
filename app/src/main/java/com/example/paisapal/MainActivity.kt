@@ -44,6 +44,8 @@ class MainActivity : ComponentActivity() {
     private val _hasLocationPermission = mutableStateOf(false)
     private val _hasNotificationAccess = mutableStateOf(false)
 
+    private val _hasSkippedSms = mutableStateOf(false)
+
     private val currentStep = mutableStateOf(PermissionStep.SMS_PERMISSION)
 
     // SMS Permission Launcher
@@ -112,6 +114,7 @@ class MainActivity : ComponentActivity() {
                     hasLocationPermission = _hasLocationPermission.value,
                     hasNotificationAccess = _hasNotificationAccess.value,
                     onRequestSmsPermission = { requestSmsPermissions() },
+                    onSkipSmsPermission = { skipSmsPermission() },
                     onRequestLocationPermission = { requestLocationPermissions() },
                     onRequestNotificationAccess = { requestNotificationAccess() },
                     onAccountSetupComplete = {
@@ -171,7 +174,7 @@ class MainActivity : ComponentActivity() {
 
             // Determine current step
             currentStep.value = when {
-                !hasSms -> PermissionStep.SMS_PERMISSION
+                !hasSms && !_hasSkippedSms.value -> PermissionStep.SMS_PERMISSION
                 !hasLocation -> PermissionStep.LOCATION_PERMISSION
                 !hasNotif -> PermissionStep.NOTIFICATION_ACCESS
                 else -> PermissionStep.ALL_GRANTED
@@ -184,7 +187,10 @@ class MainActivity : ComponentActivity() {
             currentStep.value = PermissionStep.SMS_PERMISSION
         }
     }
-
+    private fun skipSmsPermission() {
+        _hasSkippedSms.value = true
+        checkAllPermissions() // Will now bypass SMS_PERMISSION case
+    }
     private fun hasNotificationAccess(): Boolean {
         return try {
             val enabledListeners = Settings.Secure.getString(
@@ -237,6 +243,7 @@ fun AppRoot(
     hasLocationPermission: Boolean,
     hasNotificationAccess: Boolean,
     onRequestSmsPermission: () -> Unit,
+    onSkipSmsPermission: () -> Unit,
     onRequestLocationPermission: () -> Unit,
     onRequestNotificationAccess: () -> Unit,
     onAccountSetupComplete: () -> Unit,
@@ -248,30 +255,44 @@ fun AppRoot(
         modifier = Modifier.fillMaxSize(),
         color = Color.Black
     ) {
-        when {
-            // Step 1: SMS Permission
-            currentStep == PermissionStep.SMS_PERMISSION || !hasSmsPermissions -> {
-                SmsPermissionScreen(onRequestPermission = onRequestSmsPermission)
+
+        //  Only listen to 'currentStep'
+        when (currentStep) {
+            PermissionStep.SMS_PERMISSION -> {
+                SmsPermissionScreen(
+                    onRequestPermission = onRequestSmsPermission,
+                    onSkip = onSkipSmsPermission
+                )
             }
-            // Step 2: Location Permission
-            currentStep == PermissionStep.LOCATION_PERMISSION || !hasLocationPermission -> {
+
+            PermissionStep.LOCATION_PERMISSION -> {
                 LocationPermissionScreen(onRequestPermission = onRequestLocationPermission)
             }
-            // Step 3: Notification Access
-            currentStep == PermissionStep.NOTIFICATION_ACCESS || !hasNotificationAccess -> {
+
+            PermissionStep.NOTIFICATION_ACCESS -> {
                 NotificationAccessScreen(onRequestPermission = onRequestNotificationAccess)
             }
-            //  Step 4: Account Setup - USE ManageAccountsScreen IN ONBOARDING MODE
-            currentStep == PermissionStep.ACCOUNT_SETUP || accounts.isEmpty() -> {
+
+            PermissionStep.ACCOUNT_SETUP -> {
                 ManageAccountsScreen(
                     viewModel = accountsViewModel,
                     isOnboarding = true,
                     onDoneClick = onAccountSetupComplete
                 )
             }
-            // Step 5: All done - show main app
+
+            // Covers ALL_GRANTED or any other case
             else -> {
-                MainScreen()
+                // Check if account setup is actually needed (fallback safety)
+                if (accounts.isEmpty()) {
+                    ManageAccountsScreen(
+                        viewModel = accountsViewModel,
+                        isOnboarding = true,
+                        onDoneClick = onAccountSetupComplete
+                    )
+                } else {
+                    MainScreen()
+                }
             }
         }
     }
@@ -279,7 +300,10 @@ fun AppRoot(
 
 
 @Composable
-fun SmsPermissionScreen(onRequestPermission: () -> Unit) {
+fun SmsPermissionScreen(
+    onRequestPermission: () -> Unit,
+    onSkip: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -297,7 +321,7 @@ fun SmsPermissionScreen(onRequestPermission: () -> Unit) {
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "SMS Permission Required",
+            text = "Enable SMS Backup",
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White
@@ -306,7 +330,7 @@ fun SmsPermissionScreen(onRequestPermission: () -> Unit) {
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "PaisaPal needs SMS access to automatically track your bank transactions.",
+            text = "PaisaPal can read bank SMSs to double-check transactions. This is optional but recommended for accuracy.",
             fontSize = 16.sp,
             textAlign = TextAlign.Center,
             color = Color(0xFFAAAAAA),
@@ -361,13 +385,23 @@ fun SmsPermissionScreen(onRequestPermission: () -> Unit) {
                 color = Color.White
             )
         }
-    }
-}
 
-@Preview
-@Composable
-fun SmsPermissionScreenPreview() {
-    SmsPermissionScreen(onRequestPermission = {})
+        Spacer(modifier = Modifier.height(16.dp))
+
+        //  SKIP BUTTON
+        TextButton(
+            onClick = onSkip,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+        ) {
+            Text(
+                text = "Skip for now",
+                color = Color.Gray,
+                fontSize = 16.sp
+            )
+        }
+    }
 }
 
 @Composable
