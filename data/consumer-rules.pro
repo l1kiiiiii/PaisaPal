@@ -1,57 +1,22 @@
-# ----------------------------------------------------------------------------
-# DATA MODULE CONSUMER RULES
-# ----------------------------------------------------------------------------
-# These rules are automatically applied to modules that depend on :data
+# ============================================================================
+# DATA MODULE RULES
+# ============================================================================
 
-# ============================================================================
-# 1. NEW NOTIFICATION CACHE ARCHITECTURE (Critical Fix)
-# ============================================================================
-# Protect the cache implementation and repository
--keep class com.example.data.cache.** { *; }
--keep class com.example.data.repository.** { *; }
-
-# ============================================================================
-# 2. ROOM DATABASE (Fixed Package Name)
-# ============================================================================
-# Was: com.example.paisapal.data.local.entity.**
-# Fixed: com.example.data.local.entity.**
+# 1. Keep Room Entities
+# Room uses reflection to map these to database tables.
 -keep class com.example.data.local.entity.** { *; }
+
+# 2. Keep DAOs
+# Room generates code for these; keeping the interface ensures mapping works.
 -keep class com.example.data.local.dao.** { *; }
 
-# Room - Prevent obfuscation of database structure
--keep @androidx.room.Entity class *
--keep class * extends androidx.room.RoomDatabase
--dontwarn androidx.room.paging.**
-
-# ============================================================================
-# 3. SQLCIPHER (Database Encryption)
-# ============================================================================
--keep class net.sqlcipher.** { *; }
--keep class net.sqlcipher.database.** { *; }
-
-# ============================================================================
-# 4. DATA TRANSFER OBJECTS (Network Layer)
-# ============================================================================
-# Was: com.example.paisapal.data.remote.dto.**
-# Fixed: com.example.data.remote.dto.**
-# (Only needed if you have a remote package)
--keep class com.example.data.remote.dto.** { *; }
-
-# ============================================================================
-# 5. HILT DEPENDENCY INJECTION
-# ============================================================================
-# Protect Hilt modules in data layer
+# 3. Keep Hilt Modules
+# Ensures Dependency Injection wiring isn't stripped.
 -keep class com.example.data.di.** { *; }
 
-# Prevent stripping of @Inject constructors
--keepclassmembers class * {
-    @javax.inject.Inject <init>(...);
-}
+# 4. Keep Notification Cache Implementation
+# Since this is used by the Service in the App module.
+-keep class com.example.data.cache.NotificationCacheImpl { *; }
 
-# ============================================================================
-# 6. GSON/JSON SERIALIZATION (if used)
-# ============================================================================
-# Prevent field name obfuscation for JSON parsing
--keepclassmembers class com.example.data.** {
-    @com.google.gson.annotations.SerializedName <fields>;
-}
+# 5. Keep Mappers (Safe default for Clean Architecture)
+-keep class com.example.data.mapper.** { *; }
