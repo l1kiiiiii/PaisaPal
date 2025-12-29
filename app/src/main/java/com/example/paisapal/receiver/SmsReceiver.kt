@@ -8,12 +8,16 @@ import android.content.pm.PackageManager
 import android.provider.Telephony
 import android.util.Log
 import androidx.core.content.ContextCompat
+import androidx.work.OneTimeWorkRequestBuilder  
+import androidx.work.WorkManager                 
 import com.example.data.service.TransactionProcessingService
 import com.example.domain.engine.SmsProcessingEngine
 import com.example.domain.model.SmsMessage
 import com.example.domain.repository.TransactionRepository
+import com.example.paisapal.worker.TransactionMatchWorker  
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
+import java.util.concurrent.TimeUnit  
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -27,6 +31,9 @@ class SmsReceiver : BroadcastReceiver() {
 
     @Inject
     lateinit var transactionProcessingService: TransactionProcessingService
+
+    @Inject
+    lateinit var workManager: WorkManager  
 
     override fun onReceive(context: Context?, intent: Intent?) {
         if (context == null || intent == null) {
@@ -66,18 +73,15 @@ class SmsReceiver : BroadcastReceiver() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                //  Group fragments by sender (Handles Multipart/Long SMS)
                 val messagesBySender = messages.groupBy { it.displayOriginatingAddress }
 
                 messagesBySender.forEach { (sender, fragments) ->
-                    // Join the body parts to get the complete SMS text
                     val fullBody = fragments.joinToString("") { it.messageBody }
                     val timestamp = fragments[0].timestampMillis
 
                     Log.d(TAG, "Processing SMS from: $sender")
 
                     try {
-                        //  Deterministic ID to prevent duplicates
                         val uniqueId = "${sender}_${timestamp}_${fullBody.hashCode()}"
 
                         val smsMessage = SmsMessage(
@@ -85,7 +89,7 @@ class SmsReceiver : BroadcastReceiver() {
                             address = sender,
                             body = fullBody,
                             timestamp = timestamp,
-                            type = 1 // Inbox
+                            type = 1
                         )
 
                         val transaction = smsProcessingEngine.processSms(smsMessage)
@@ -102,6 +106,9 @@ class SmsReceiver : BroadcastReceiver() {
                                     Log.e(TAG, "Context processing failed", e)
                                 }
                             }
+
+                            // Trigger duplicate matching
+                            triggerMatchingWorker()
                         } else {
                             Log.d(TAG, "SMS ignored (Not a transaction or filtered)")
                         }
@@ -115,6 +122,15 @@ class SmsReceiver : BroadcastReceiver() {
                 pendingResult.finish()
             }
         }
+    }
+
+   
+    private fun triggerMatchingWorker() {
+        Log.d(TAG, "📋 Scheduling Transaction Matching (5s delay)...")
+        val matchRequest = OneTimeWorkRequestBuilder<TransactionMatchWorker>()
+            .setInitialDelay(5, TimeUnit.SECONDS)
+            .build()
+        workManager.enqueue(matchRequest)
     }
 
     companion object {

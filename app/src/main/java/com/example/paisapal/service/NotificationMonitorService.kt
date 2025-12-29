@@ -3,121 +3,113 @@ package com.example.paisapal.service
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import com.example.domain.data.AppRegistry
-import com.example.domain.data.NotificationCache
+import com.example.domain.engine.CategorizationEngine
+import com.example.domain.engine.TransactionParser
+import com.example.domain.model.Transaction
+import com.example.domain.repository.TransactionRepository
+import com.example.paisapal.worker.TransactionMatchWorker
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import java.util.UUID
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class NotificationMonitorService : NotificationListenerService() {
 
-    @Inject
-    lateinit var notificationCache: NotificationCache
+    // 🧠 Inject the same engines used for SMS
+    @Inject lateinit var transactionParser: TransactionParser
+    @Inject lateinit var categorizationEngine: CategorizationEngine
+    @Inject lateinit var transactionRepository: TransactionRepository
+    @Inject lateinit var workManager: WorkManager
+
+    private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     companion object {
         private const val TAG = "NotificationMonitor"
-
-        // 1. Unified Keyword List (Both Debit & Credit)
-        private val PAYMENT_KEYWORDS = listOf(
-            "paid", "payment", "sent", "transferred", "debited", // Debit
-            "received", "credited", "added",                     // Credit
-            "₹", "rs", "rs.", "inr"
-        )
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         try {
             val packageName = sbn.packageName
 
-            // Only listen to known payment apps (GPay, PhonePe, Paytm, etc.)
+            // Only listen to known payment apps
             if (!AppRegistry.isKnownPaymentApp(packageName)) return
 
-            val notification = sbn.notification
-            val extras = notification.extras
+            val extras = sbn.notification.extras
             val title = extras.getCharSequence("android.title")?.toString() ?: ""
             val text = extras.getCharSequence("android.text")?.toString() ?: ""
             val bigText = extras.getCharSequence("android.bigText")?.toString() ?: ""
 
-            // Combine all text for safer parsing
-            val fullText = "$title $text $bigText".lowercase()
+            // Combine text for parser
+            val fullContent = "$title . $text . $bigText"
 
-            if (!isPaymentNotification(fullText)) return
-
-            // 2. Extract Raw Amount (Always Positive initially)
-            val rawAmount = extractAmount(fullText) ?: return
-
-            // 3. Determine Sign (Debit = Negative, Credit = Positive)
-            val isCredit = isCreditTransaction(fullText)
-            val signedAmount = if (isCredit) rawAmount else -rawAmount
-
-            val counterparty = extractCounterparty(fullText, isCredit)
-            val appName = AppRegistry.getAppInfo(packageName)?.displayName ?: "Unknown App"
-
-            // 4. Save to Cache (No Interface Changes Needed!)
-            // We pass the signed amount (-500.0 or +500.0) directly.
-            if (rawAmount > 0) {
-                notificationCache.addNotification(
-                    amount = signedAmount,
-                    merchantName = counterparty ?: "Unknown",
-                    packageName = packageName,
-                    appName = appName,
-                    fullText = fullText,
-                    timestamp = sbn.postTime
-                )
-
-                val typeStr = if (isCredit) "Credit (+)" else "Debit (-)"
-                Log.d(TAG, "PaisaPal: ₹$signedAmount ($typeStr) detected from $appName")
-            }
+            Log.d(TAG, "📱 Processing notification from $packageName")
+            processNotification(fullContent, packageName, sbn.postTime)
         } catch (e: Exception) {
             Log.e(TAG, "Error processing notification", e)
         }
     }
 
-    private fun isPaymentNotification(text: String) =
-        PAYMENT_KEYWORDS.any { text.contains(it) }
-
-    /**
-     * Returns TRUE if message contains Income keywords
-     */
-    private fun isCreditTransaction(text: String): Boolean {
-        val creditKeywords = listOf("received from", "credited", "added to", "money received")
-        return creditKeywords.any { text.contains(it) }
-    }
-
-    private fun extractAmount(text: String): Double? {
-        val pattern = "(?:₹|rs\\.?|inr)\\s*([\\d,]+(?:\\.\\d{2})?)"
-        Regex(pattern, RegexOption.IGNORE_CASE).find(text)?.let { match ->
-            return match.groupValues[1].replace(",", "").toDoubleOrNull()
-        }
-        return null
-    }
-
-    /**
-     * Smart Counterparty Extraction based on Transaction Type
-     */
-    private fun extractCounterparty(text: String, isCredit: Boolean): String? {
-        val patterns = if (isCredit) {
-            // INCOME: "Received from Rahul"
-            listOf(
-                "(?:received|credited)\\s+(?:₹|rs\\.?|inr)?\\s*[\\d,.]+\\s+from\\s+([^.\\n]+)",
-                "(?:received|credited)\\s+from\\s+([^.\\n]+?)\\s+(?:₹|rs\\.?|inr)"
-            )
-        } else {
-            // EXPENSE: "Paid to Zomato"
-            listOf(
-                "(?:paid|sent|transferred)\\s+(?:₹|rs\\.?|inr)?\\s*[\\d,.]+\\s+to\\s+([^.\\n]+)",
-                "(?:paid|sent|transferred)\\s+(?:to\\s+)?([^.\\n]+?)\\s+(?:₹|rs\\.?|inr)"
-            )
-        }
-
-        patterns.forEach { pattern ->
-            Regex(pattern, RegexOption.IGNORE_CASE).find(text)?.let { match ->
-                val name = match.groupValues[1].trim()
-                if (name.isNotBlank() && name.length in 2..40 && !name.contains("successful")) {
-                    return name
+    private fun processNotification(content: String, senderApp: String, timestamp: Long) {
+        serviceScope.launch {
+            try {
+                //  REUSE: Use existing TransactionParser
+                val parsed = transactionParser.parse(content, senderApp, timestamp) ?: run {
+                    Log.d(TAG, " Parser rejected: Not a transaction")
+                    return@launch
                 }
+
+                //  Build Transaction
+                var transaction = Transaction(
+                    id = UUID.randomUUID().toString(),
+                    amount = parsed.amount,
+                    type = parsed.type,
+                    merchantRaw = parsed.merchantRaw,
+                    merchantDisplayName = null,
+                    category = null,
+                    timestamp = parsed.timestamp,
+                    smsBody = content,
+                    sender = senderApp,
+                    referenceNumber = parsed.referenceNumber,
+                    upiVpa = parsed.upiVpa,
+                    needsReview = false,
+                    accountLast4Digits = null,
+                    accountName = "UPI App"
+                )
+
+                // 🧠 Categorize
+                val categorizationResult = categorizationEngine.categorizeWithConfidence(transaction)
+                transaction = transaction.copy(
+                    category = categorizationResult.category,
+                    needsReview = categorizationResult.confidence < 0.70f,
+                    contextConfidence = categorizationResult.confidence
+                )
+
+                // 💾 Save to Database
+                transactionRepository.insert(transaction)
+                Log.i(TAG, " Notification Saved: ₹${transaction.amount} → ${transaction.category}")
+
+                // 🧠 Trigger Matching
+                triggerMatchingWorker()
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Error processing notification", e)
             }
         }
-        return null
+    }
+
+    private fun triggerMatchingWorker() {
+        Log.d(TAG, "📋 Scheduling Transaction Matching (5s delay)...")
+        val matchRequest = OneTimeWorkRequestBuilder<TransactionMatchWorker>()
+            .setInitialDelay(5, TimeUnit.SECONDS)
+            .build()
+        workManager.enqueue(matchRequest)
     }
 }
