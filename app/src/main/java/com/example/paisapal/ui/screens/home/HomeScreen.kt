@@ -66,8 +66,11 @@ fun HomeScreen(
     onReviewClick: () -> Unit = {},
     showQuickAddDialog: Boolean = false,
     onDismissQuickAdd: () -> Unit = {},
-    onNotificationClick: () -> Unit = {}  // ✅ ADDED
+    onNotificationClick: () -> Unit = {}
 ) {
+    LaunchedEffect(Unit) {
+        viewModel.refreshData()
+    }
     val smartFeedItems by viewModel.smartFeedItems.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 

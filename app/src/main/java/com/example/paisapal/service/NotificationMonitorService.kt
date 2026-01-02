@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.domain.data.AppRegistry
+import com.example.domain.data.NotificationCache
 import com.example.domain.engine.CategorizationEngine
 import com.example.domain.engine.TransactionParser
 import com.example.domain.model.Transaction
@@ -26,7 +27,10 @@ class NotificationMonitorService : NotificationListenerService() {
     // 🧠 Inject the same engines used for SMS
     @Inject lateinit var transactionParser: TransactionParser
     @Inject lateinit var categorizationEngine: CategorizationEngine
+
     @Inject lateinit var transactionRepository: TransactionRepository
+
+    @Inject lateinit var notificationCache: NotificationCache
     @Inject lateinit var workManager: WorkManager
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -60,11 +64,21 @@ class NotificationMonitorService : NotificationListenerService() {
     private fun processNotification(content: String, senderApp: String, timestamp: Long) {
         serviceScope.launch {
             try {
-                //  REUSE: Use existing TransactionParser
-                val parsed = transactionParser.parse(content, senderApp, timestamp) ?: run {
-                    Log.d(TAG, " Parser rejected: Not a transaction")
-                    return@launch
-                }
+                //  Use existing TransactionParser
+                val parsed = transactionParser.parse(
+                    body = content,
+                    sender = senderApp,
+                    timestamp = timestamp
+                ) ?: return@launch // Exit if not a transaction
+
+                notificationCache.addNotification(
+                    amount = if(parsed.type.name == "CREDIT") parsed.amount else -parsed.amount,
+                    merchantName = parsed.merchantRaw ?: "Unknown",
+                    packageName = senderApp,
+                    appName = AppRegistry.getAppInfo(senderApp)?.displayName ?: "UPI App",
+                    fullText = content,
+                    timestamp = timestamp
+                )
 
                 //  Build Transaction
                 var transaction = Transaction(

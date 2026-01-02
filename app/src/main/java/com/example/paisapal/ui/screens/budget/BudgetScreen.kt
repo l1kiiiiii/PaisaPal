@@ -10,6 +10,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,21 +24,28 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.domain.usecase.BudgetSummary
 import com.example.paisapal.ui.components.CompactTopBar
 import com.example.paisapal.ui.theme.*
+import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BudgetScreen(
     viewModel: BudgetViewModel = hiltViewModel()
 ) {
+    // 1. Collect Global Data
+    val globalBudget by viewModel.globalBudget.collectAsState()
+    val totalAllocated by viewModel.totalAllocated.collectAsState()
+
     val budgetSummaries by viewModel.budgetSummaries.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val availableCategories by viewModel.availableCategories.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
 
+    LaunchedEffect(Unit) {
+        viewModel.refreshData()
+    }
+
     Scaffold(
-        topBar = {
-            CompactTopBar("Budgets")
-        },
+        topBar = { CompactTopBar("Monthly Budget") },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showAddDialog = true },
@@ -58,34 +66,8 @@ fun BudgetScreen(
             ) {
                 CircularProgressIndicator(color = PrimaryGreenLight)
             }
-        } else if (budgetSummaries.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(BackgroundDark)
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text(
-                        "No budgets yet",
-                        fontSize = 18.sp,
-                        color = TextGray
-                    )
-                    Button(
-                        onClick = { showAddDialog = true },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = PrimaryGreenLight
-                        )
-                    ) {
-                        Text("Create Your First Budget")
-                    }
-                }
-            }
         } else {
+            // ✅ FIX: Always show the list, do not block with "Empty State"
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -94,34 +76,77 @@ fun BudgetScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // 🟢 1. GLOBAL SALARY CARD (Always Visible)
                 item {
-                    OverallBudgetCard(budgetSummaries)
-                }
-
-                val overBudgetCount = budgetSummaries.count { it.isOverBudget }
-                val nearLimitCount = budgetSummaries.count { it.progress >= 0.8f && !it.isOverBudget }
-
-                if (overBudgetCount > 0 || nearLimitCount > 0) {
-                    item {
-                        AlertsCard(overBudgetCount, nearLimitCount)
-                    }
-                }
-
-                item {
-                    Text(
-                        "Category Budgets",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextWhite
+                    GlobalSalaryCard(
+                        salary = globalBudget,
+                        allocated = totalAllocated,
+                        onSalaryChanged = { viewModel.setGlobalBudget(it) }
                     )
                 }
 
+                // 2. OVER-ALLOCATION ALERT
+                val unallocated = globalBudget - totalAllocated
+                if (unallocated < 0) {
+                    item {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = DebitRed.copy(alpha = 0.2f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.Warning, contentDescription = null, tint = DebitRed)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    "Over-allocated by ₹${abs(unallocated.toInt())}",
+                                    color = TextWhite,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 3. CATEGORY HEADER
+                item {
+                    Text(
+                        "Category Allocations",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextWhite,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+
+                // 4. EMPTY CATEGORY STATE (Inline)
+                if (budgetSummaries.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "No categories yet. Tap + to add.",
+                                color = TextGray
+                            )
+                        }
+                    }
+                }
+
+                // 5. CATEGORY LIST
                 items(budgetSummaries) { budget ->
                     BudgetCard(
                         budget = budget,
                         onDelete = { viewModel.deleteBudgetByCategory(budget.category) }
                     )
                 }
+
+                // Spacer for FAB
+                item { Spacer(modifier = Modifier.height(80.dp)) }
             }
         }
     }
@@ -137,7 +162,111 @@ fun BudgetScreen(
         )
     }
 }
+@Composable
+fun GlobalSalaryCard(
+    salary: Double,
+    allocated: Double,
+    onSalaryChanged: (Double) -> Unit
+) {
+    var isEditing by remember { mutableStateOf(false) }
+    var textValue by remember { mutableStateOf(if (salary > 0) salary.toString() else "") }
+    val unallocated = salary - allocated
 
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            // Header Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Total Monthly Income", color = TextGray, fontSize = 14.sp)
+
+                if (!isEditing) {
+                    IconButton(onClick = {
+                        textValue = if (salary > 0) salary.toString() else ""
+                        isEditing = true
+                    }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit Income", tint = PrimaryGreenLight, modifier = Modifier.size(20.dp))
+                    }
+                }
+            }
+
+            // Input / Display Row
+            if (isEditing) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = textValue,
+                        onValueChange = { if (it.matches(Regex("^\\d*\\.?\\d*$"))) textValue = it },
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text("Enter Salary") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryGreenLight,
+                            unfocusedBorderColor = TextGray,
+                            focusedTextColor = TextWhite,
+                            unfocusedTextColor = TextWhite
+                        )
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            val amount = textValue.toDoubleOrNull() ?: 0.0
+                            onSalaryChanged(amount)
+                            isEditing = false
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreenLight)
+                    ) {
+                        Text("Save")
+                    }
+                }
+            } else {
+                Text(
+                    text = "₹${String.format("%.0f", salary)}",
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextWhite
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            Divider(color = DividerColor)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Footer Stats
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text("Allocated", color = TextGray, fontSize = 12.sp)
+                    Text(
+                        "₹${String.format("%.0f", allocated)}",
+                        color = TextWhite,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 16.sp
+                    )
+                }
+
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("Free to Budget", color = TextGray, fontSize = 12.sp)
+                    Text(
+                        "₹${String.format("%.0f", unallocated)}",
+                        color = if (unallocated < 0) DebitRed else PrimaryGreenLight,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
+            }
+        }
+    }
+}
 @Composable
 private fun OverallBudgetCard(summaries: List<BudgetSummary>) {
     val totalBudget = summaries.sumOf { it.budgetAmount }
@@ -288,17 +417,19 @@ private fun BudgetCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        "${String.format("%.0f", budget.progress * 100)}%",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = when {
-                            budget.isOverBudget -> DebitRed
-                            budget.progress >= 0.8f -> WarningOrange
-                            else -> CreditGreen
-                        }
-                    )
-
+                    Surface(
+                        color = if (budget.isOverBudget) DebitRed.copy(alpha=0.1f) else PrimaryGreenLight.copy(alpha=0.1f),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            "${String.format("%.0f", budget.progress * 100)}%",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (budget.isOverBudget) DebitRed else PrimaryGreenLight,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
                     IconButton(
                         onClick = onDelete,
                         modifier = Modifier.size(24.dp)
@@ -312,6 +443,15 @@ private fun BudgetCard(
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Progress Bar
+            LinearProgressIndicator(
+                progress = { progress.coerceIn(0f, 1f) },
+                modifier = Modifier.fillMaxWidth().height(8.dp).background(DividerColor, RoundedCornerShape(4.dp)),
+                color = if (budget.isOverBudget) DebitRed else PrimaryGreenLight,
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -333,19 +473,6 @@ private fun BudgetCard(
             }
 
             Spacer(modifier = Modifier.height(12.dp))
-
-            LinearProgressIndicator(
-                progress = { progress.coerceIn(0f, 1f) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp),
-                color = when {
-                    budget.isOverBudget -> DebitRed
-                    budget.progress >= 0.8f -> WarningOrange
-                    else -> PrimaryGreenLight
-                },
-                trackColor = DividerColor,
-            )
         }
     }
 }
@@ -382,17 +509,20 @@ private fun AddBudgetDialog(
                             .menuAnchor(),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = PrimaryGreenLight,
-                            unfocusedBorderColor = DividerColor
+                            unfocusedBorderColor = DividerColor,
+                            focusedTextColor = TextWhite,
+                            unfocusedTextColor = TextWhite
                         )
                     )
 
                     ExposedDropdownMenu(
                         expanded = expanded,
-                        onDismissRequest = { expanded = false }
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier.background(SurfaceDark)
                     ) {
                         availableCategories.forEach { category ->
                             DropdownMenuItem(
-                                text = { Text(category) },
+                                text = { Text(category, color = TextWhite) }, // Fix Text Color
                                 onClick = {
                                     selectedCategory = category
                                     expanded = false
@@ -411,16 +541,16 @@ private fun AddBudgetDialog(
                         }
                     },
                     label = { Text("Budget Amount") },
-                    modifier = Modifier.fillMaxWidth(),
                     prefix = { Text("₹") },
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Decimal
-                    ),
+                    ),modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = PrimaryGreenLight,
-                        unfocusedBorderColor = DividerColor
-                    ),
-                    singleLine = true
+                        unfocusedBorderColor = DividerColor,
+                        focusedTextColor = TextWhite,
+                        unfocusedTextColor = TextWhite
+                    )
                 )
             }
         },
